@@ -39,11 +39,10 @@
 #include <../../dsvimlib/include/mkdir_p.h>
 #include <../../dsvimlib/include/msg_util.h>		/* utility functions for messaging */
 
-#include <mesobot-lcmtypes/image/image_t.hpp>
+#include "../../habcam-lcmtypes/image/image/image_t.hpp"
 
 #include "vimc.h"
-extern lcm::LCM myLcm;
-extern lcm::LCM squeezeLcm;
+
 
 class FrameObserver : virtual public AVT::VmbAPI::IFrameObserver
 {

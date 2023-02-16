@@ -43,8 +43,7 @@ using AVT::VmbAPI::VimbaSystem;
 #define NO_INITIAL_FILE_NAME  "NO_INITIAL_FILE_NAME"
 #define DEFAULT_CAMERA_FREQUENCY 1000000000
 
-#define DEFAULT_DECIMATION_FACTOR   1
-#define DEFAULT_SQUEEZE_FACTOR      1
+
 
 #define SYNC_UNKNOWN       5
 #define SYNC_SLAVE         6
@@ -83,10 +82,7 @@ typedef struct
    cameraSettings_t        actualSettings;
    char                    *xmlFileName;
    char                    *parameterFileName;
-   char                    *smallChannelName;
-   int                     decimationFactor;
-  // lcm::LCM                *squeezeChannel;
-   double                  squeezeFactor;
+   char                    *lcmChannelName;
    bool                    plugged;
    char                    *subscriptionName;
    char                    *filenamePrefix;
@@ -94,21 +90,11 @@ typedef struct
    VmbInt64_t              cameraFrequency;
    double                  startCameraTime;
    bool                    saveImages;
+   bool                    doNotUseInStereoLogging;
+
 } avtCameraT;
 
-typedef struct
-{
-   char  *lightPosition;
-   char  *lightID;
-   int   nioThread;
-   double temperature;
-   double humidity;
-   int mode;
-   int powerLevel;
-   char  *commsOutChannel;
-   char  *commsInChannel;
 
-} dsplLightT;
 
 
 extern int make_thread_table_entry (int thread_num, const char *thread_name, void *(*thread_function) (void *), void *thread_launch_arg, int extra_arg_1, int extra_arg_2, int extra_arg_3, int extra_arg_4);

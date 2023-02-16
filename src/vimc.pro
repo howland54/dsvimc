@@ -69,6 +69,7 @@ SOURCES += \
     vimcBusThread.cpp \
     vimcThread.cpp \
     vimcLoggingThread.cpp \
+    stereoLoggingThread.cpp
     AVTAttribute.cpp
 
 HEADERS += \
@@ -81,4 +82,5 @@ HEADERS += \
     vimcThread.h \
     vimcLoggingThread.h \
     AVTAttribute.h \
-    dspllightthread.h
+    stereoLoggingThread.h
+

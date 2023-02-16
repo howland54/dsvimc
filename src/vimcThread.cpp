@@ -1,11 +1,11 @@
 /* ----------------------------------------------------------------------
 
-   code for talkinng to Vimba cameras from Akllied Vision
+   code for talkinng to Vimba cameras from Allied Vision
    
    Modification History:
    DATE        AUTHOR   COMMENT
    13-Apr-2017  jch      creation, derive from jason crossbow prompt thread
-   31 Jan 2023  jch      previous changes made it work with Fly cameras, then Allied Viwion Vimba.  Now modify for Habcam
+   31 Jan 2023  jch      previous changes made it work with Fly cameras, then Allied Vision Vimba.  Now modify for Habcam
    ---------------------------------------------------------------------- */
 
 /* ansii c headers */
@@ -21,12 +21,12 @@
 
 
 /* local includes */
-#include <../../dsvimlib/include/time_util.h>
-#include <../../dsvimlib/include/convert.h>
-#include <../../dsvimlib/include/global.h>
-#include <../../dsvimlib/include/imageTalk.h>		/* jasontalk protocol and structures */
-#include <../../dsvimlib/include/msg_util.h>		/* utility functions for messaging */
-#include <../../dsvimlib/include/launch_timer.h>
+#include "../../dsvimlib/include/time_util.h"
+#include "../../dsvimlib/include/convert.h"
+#include "../../dsvimlib/include/global.h"
+#include "../../dsvimlib/include/imageTalk.h"		/* jasontalk protocol and structures */
+#include "../../dsvimlib/include/msg_util.h"		/* utility functions for messaging */
+#include "../../dsvimlib/include/launch_timer.h"
 
 #include "AVTAttribute.h"
 
@@ -44,7 +44,7 @@
 extern avtCameraT  avtCameras[MAX_N_OF_CAMERAS];
 extern pthread_attr_t DEFAULT_ROV_THREAD_ATTR;
 extern lcm::LCM myLcm;
-extern lcm::LCM squeezeLcm;
+
 
 extern VimbaSystem          *vSystem;
 
@@ -470,9 +470,7 @@ void *vimcThread (void *threadNumber)
    int currentQueryType = CAMERA_SHUTTER;
    parameterQueryTypes[CAMERA_SHUTTER] = CAMERA_SHUTTER;
    parameterQueryTypes[CAMERA_GAIN] = CAMERA_GAIN;
-   parameterQueryTypes[CAMERA_BINNING] = CAMERA_BINNING;
-   parameterQueryTypes[CAMERA_PTP_SYNC] = CAMERA_PTP_SYNC;
-   parameterQueryTypes[TRIGGER_SOURCE] = TRIGGER_SOURCE;
+
 
 
 
@@ -530,6 +528,7 @@ void *vimcThread (void *threadNumber)
                            {
 
                               res = configureCamera(&(avtCameras[theCameraNumber]),theAVTCamera);
+                              printf(" return from configure camera: %d\n",res);
                            }
                         if(VmbErrorSuccess == res)
                            {
@@ -574,12 +573,7 @@ void *vimcThread (void *threadNumber)
 
                         break;
                      }
-                  case WDECIMATION:
-                     {
-                        int *myRep = (int *) data;
-                        avtCameras[theCameraNumber].decimationFactor = *myRep;
-                        break;
-                     }
+
                   case WCE:
                      {
                         double *newExposure = (double *)data;
@@ -705,99 +699,9 @@ void *vimcThread (void *threadNumber)
                            {
                               currentQueryType = CAMERA_SHUTTER;
                            }
-                        if(CAMERA_BINNING == parameterQueryTypes[currentQueryType])
-                           {
-                              imageParameter.key = "BINNING";
-                           }
-                        else if (TRIGGER_SOURCE == parameterQueryTypes[currentQueryType])
-                           {
-                              imageParameter.key = "TRIGGER_SOURCE";
-                              AVT::VmbAPI::FeaturePtr triggerSourceFeature;
-                              VmbErrorType res = SP_ACCESS( theAVTCamera )->GetFeatureByName( "TriggerSource", triggerSourceFeature );
-                              if( VmbErrorSuccess == res )
-                                 {
-                                    std::string value;
-                                    VmbErrorType err = triggerSourceFeature->GetValue( value );
-                                    if ( err == VmbErrorSuccess )
-                                       {
-                                          if("Software" == value)
-                                             {
-                                                avtCameras[theCameraNumber].actualSettings.triggerSource = SOFTWARE;
-                                             }
-                                          else if("FixedRate" == value)
-                                             {
-                                                avtCameras[theCameraNumber].actualSettings.triggerSource = FIXED_RATE;
-                                             }
-                                          else if("Line1" == value)
-                                             {
-                                                avtCameras[theCameraNumber].actualSettings.triggerSource = LINE1;
-                                             }
-                                          else if("Line2" == value)
-                                             {
-                                                avtCameras[theCameraNumber].actualSettings.triggerSource = LINE2;
-                                             }
-                                          else if("Line3" == value)
-                                             {
-                                                avtCameras[theCameraNumber].actualSettings.triggerSource = LINE3;
-                                             }
-                                          else if("Line4" == value)
-                                             {
-                                                avtCameras[theCameraNumber].actualSettings.triggerSource = LINE4;
-                                             }
-                                          else if("Freerun" == value)
-                                             {
-                                                avtCameras[theCameraNumber].actualSettings.triggerSource = FREE_RUN;
-                                             }
-                                          else
-                                             {
-                                                avtCameras[theCameraNumber].actualSettings.triggerSource = UNKNOWN_TRIGGER_SOURCE;
-                                             }
+                        
 
-                                          imageParameter.value = value;
-                                          imageParameter.cameraNumber = theCameraNumber;
-                                          squeezeLcm.publish("M_STATUS_PARAMETERS", &imageParameter);
-                                       }
-                                 }
 
-                           }
-                        else if(CAMERA_PTP_SYNC == parameterQueryTypes[currentQueryType])
-                           {
-                              imageParameter.key = "PTP_SYNC";
-                              AVT::VmbAPI::FeaturePtr ptpSyncFeature;
-                              VmbErrorType res = SP_ACCESS( theAVTCamera )->GetFeatureByName( "PtpStatus", ptpSyncFeature );
-                              if( VmbErrorSuccess == res )
-                                 {
-                                    std::string value;
-                                    VmbErrorType err = ptpSyncFeature->GetValue( value );
-                                    if ( err == VmbErrorSuccess )
-                                       {
-                                          if("Slave" == value)
-                                             {
-                                                avtCameras[theCameraNumber].actualSettings.cameraSynced = SYNC_SLAVE;
-                                             }
-                                          else if("Initializing" == value)
-                                             {
-                                                avtCameras[theCameraNumber].actualSettings.cameraSynced = SYNC_INITIALIZING;
-                                             }
-                                          else if("Uncalibrated" == value)
-                                             {
-                                                avtCameras[theCameraNumber].actualSettings.cameraSynced = SYNC_UNCALIBRATED;
-                                             }
-                                          else if("Listening" == value)
-                                             {
-                                                avtCameras[theCameraNumber].actualSettings.cameraSynced = SYNC_LISTENING;
-                                             }
-                                          else
-                                             {
-                                                avtCameras[theCameraNumber].actualSettings.cameraSynced = SYNC_UNKNOWN;
-                                             }
-                                          imageParameter.value = value;
-                                          imageParameter.cameraNumber = theCameraNumber;
-                                          squeezeLcm.publish("M_STATUS_PARAMETERS", &imageParameter);
-                                       }
-                                 }
-
-                           }
                         else if(CAMERA_SHUTTER == parameterQueryTypes[currentQueryType])
                            {
                               imageParameter.key = "EXPOSURE";
@@ -812,7 +716,7 @@ void *vimcThread (void *threadNumber)
                                           avtCameras[theCameraNumber].actualSettings.theShutter = theExposureActual;
                                           imageParameter.value = std::to_string(theExposureActual);
                                           imageParameter.cameraNumber = theCameraNumber;
-                                          squeezeLcm.publish("M_STATUS_PARAMETERS", &imageParameter);
+
                                        }
                                  }
                            }
@@ -830,7 +734,7 @@ void *vimcThread (void *threadNumber)
                                           avtCameras[theCameraNumber].actualSettings.theGain = theGainActual;
                                           imageParameter.value = std::to_string(theGainActual);
                                           imageParameter.cameraNumber = theCameraNumber;
-                                          squeezeLcm.publish("M_STATUS_PARAMETERS", &imageParameter);
+
                                        }
                                  }
                            }

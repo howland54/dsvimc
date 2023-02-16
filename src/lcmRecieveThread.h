@@ -17,7 +17,7 @@
 
 #include <dsvimlib/IniFile.h>
 
-#include <mesobot-lcmtypes/image/image_t.hpp>
+#include "../../habcam-lcmtypes/image//image/image_t.hpp"
 
 
 #define MAX_IMAGE_SIZE 15000000

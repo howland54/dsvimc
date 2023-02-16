@@ -22,8 +22,8 @@
 
 #include <../../dsvimlib/include/ErrorCodeToMessage.h>
 
-#include <mesobot-lcmtypes/image/image_t.hpp>
-#include <mesobot-lcmtypes/image/image_parameter_t.hpp>
+#include "../../habcam-lcmtypes/image/image/image_t.hpp"
+#include "../../habcam-lcmtypes/image/image/image_parameter_t.hpp"
 
 using namespace std;
 
@@ -41,9 +41,6 @@ extern void *vimcThread (void *);
 typedef enum {
    CAMERA_SHUTTER,
    CAMERA_GAIN,
-   CAMERA_BINNING,
-   CAMERA_PTP_SYNC,
-   TRIGGER_SOURCE,
    MAX_N_OF_PARAMETER_QUERIES
 } e_cameraParameterT;
 

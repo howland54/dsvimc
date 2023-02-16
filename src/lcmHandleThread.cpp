@@ -9,34 +9,15 @@
 #include "lcmHandleThread.h"
 #include  "vimc.h"
 extern lcm::LCM myLcm;
-extern lcm::LCM squeezeLcm;
-extern lcm::LCM lightLcm;
 
-extern dsplLightT  dsplLights[MAX_N_OF_LIGHTS];
-extern int   nOfDSPLLights;
 
+stereo_event_t theStereoEvent;
 
 class State
 {
 public:
    int usefulVariable;
 };
-
-void lightCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,const raw::bytes_t *bytes, State *user)
-{
-   const unsigned char *theBytes = &*bytes->data.begin();
-   //printf(" received light data %s\n",(char *)theBytes);
-   int theBytesLength = bytes->length;
-   for (int lightNumber = 0; lightNumber < nOfDSPLLights;  lightNumber++)
-      {
-          if(channel == dsplLights[lightNumber].commsInChannel)
-             {
-                msg_send(DSPLLIGHT_THREAD,LIGHT_THREAD_BASE + lightNumber,SAS,theBytesLength, theBytes);
-                break;
-             }
-      }
-
-}
 
 
 void parameterCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,const image::image_parameter_t *image, State *user)
@@ -48,12 +29,7 @@ void parameterCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channe
          printf(" the new gain is %0.1f\n",value);
          msg_send(FLY_THREAD_BASE + image->cameraNumber,LCM_RECEIVE_THREAD,WCG,(sizeof(value)),&value);
       }
-   else if("DECIMATION" == image->key)
-      {
-          //printf(" change decimation rate!\n");
-         int intValue = (int)value;
-          msg_send(FLY_THREAD_BASE+ image->cameraNumber,LCM_RECEIVE_THREAD,WDECIMATION,(sizeof(intValue)),&intValue);
-      }
+   
    else if("STILL" == image->key)
       {
          printf(" take a still!\n");
@@ -101,35 +77,12 @@ void parameterCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channe
       {
          msg_send(FLY_THREAD_BASE+ image->cameraNumber,LCM_RECEIVE_THREAD,WRES,0,NULL);
       }
-   else if("LIGHT_LEVEL" == image->key)
-      {
-         int thedata[2];
-         thedata[0] = (int)image->cameraNumber;
-         thedata[1] = value;
-         msg_send(DSPLLIGHT_THREAD,LCM_RECEIVE_THREAD,WLL,sizeof(thedata),thedata);
-      }
-   else if("LIGHT_CHANNEL" == image->key)
-      {
-         int thedata[2];
-         thedata[0] = (int)image->cameraNumber;
-         thedata[1] = value;
-         msg_send(DSPLLIGHT_THREAD,LCM_RECEIVE_THREAD,WLC,sizeof(thedata),thedata);
-      }
-   else if("LIGHT_TEMP_REQUEST" == image->key.substr(0,18))
-      {
-         int thedata;
-         thedata = (int)image->cameraNumber;
-         msg_send(DSPLLIGHT_THREAD,LCM_RECEIVE_THREAD,RLT,sizeof(thedata),&thedata);
-      }
-   else if("LIGHT_HUMID_REQUEST" == image->key.substr(0,19))
-      {
-         int thedata;
-         thedata = (int)image->cameraNumber;
-         msg_send(DSPLLIGHT_THREAD,LCM_RECEIVE_THREAD,RLH,sizeof(thedata),&thedata);
-      }
+
 
 
 }
+
+
 
 void *lcmHandleThread (void *)
 {
@@ -148,44 +101,14 @@ void *lcmHandleThread (void *)
 
    State state;
 
-   int squeezFileNo = squeezeLcm.getFileno();
-   int lightFileNo = lightLcm.getFileno();
-// change these subscribe functions to accomodate separation of bandwidth hog, 24 October 2019 jch
-#if 0
+   
    myLcm.subscribeFunction("COMMAND_PARAMETERS", &parameterCallback, &state);
-   for (int lightNumber = 0; lightNumber < nOfDSPLLights;  lightNumber++)
-      {
-         myLcm.subscribeFunction(dsplLights[lightNumber].commsInChannel,&lightCallback, &state);
-      }
-#endif
-   squeezeLcm.subscribeFunction("COMMAND_PARAMETERS", &parameterCallback, &state);
-   for (int lightNumber = 0; lightNumber < nOfDSPLLights;  lightNumber++)
-      {
-         printf(" light %d subscribibng to %s\n",lightNumber,dsplLights[lightNumber].commsInChannel);
-         lightLcm.subscribeFunction(dsplLights[lightNumber].commsInChannel,&lightCallback, &state);
-      }
-
+   
 
    // loop forever
    while(true)
       {
-         //myLcm.handle();
-         //squeezeLcm.handle();
-
-         pollfd theFds[2];
-         theFds[0].events = POLLIN;
-         theFds[0].fd = squeezFileNo;
-         theFds[1].events = POLLIN;
-         theFds[1].fd = lightFileNo;
-         poll(theFds,2,10);
-         if(theFds[0].revents == POLLIN)
-            {
-               squeezeLcm.handle();
-            }
-         else if(theFds[1].revents == POLLIN)
-            {
-               lightLcm.handle();
-            }
+         myLcm.handle();
       }
 }
 

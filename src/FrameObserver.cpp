@@ -206,53 +206,17 @@ void FrameObserver::FrameReceived( const AVT::VmbAPI::FramePtr pFrame )
                         }
                      //imageToPublish.nmetadata = 0;
                      imageToPublish.pixelformat = image::image_t::PIXEL_FORMAT_GRAY;
-                     imageToPublish.data.resize(imageToPublish.size);
+                     imageToPublish.data.resize((uint32_t)imageToPublish.size);
                      imageToPublish.utime =(long int)( 1000.0 * imageTime);
 
                      std::copy(pBuffer, pBuffer + imageToPublish.size, imageToPublish.data.begin());
                      char topicName[32];
-                     snprintf(topicName,32,"vim%0d",cameraNumber);
-
-                     int success = myLcm.publish(topicName,&imageToPublish);
-                     //printf(" camera topic %s success = %d\n",topicName,success);
-
-                     int rep = avtCameras[cameraNumber].decimationFactor;
-                     if(rep)
-                        {
-                           //printf("+");
-                           if((imageCount % rep) == 0)
-                              {
-                                 if(avtCameras[cameraNumber].squeezeFactor < (double)(1.0) )
-                                    {
-                                       image::image_t imageToSqueeze;
-                                       imageToSqueeze.height = imageToPublish.height * avtCameras[cameraNumber].squeezeFactor;
-                                       imageToSqueeze.width = imageToPublish.width * avtCameras[cameraNumber].squeezeFactor;
-                                       imageToSqueeze.size = imageToPublish.size * avtCameras[cameraNumber].squeezeFactor * avtCameras[cameraNumber].squeezeFactor;
-                                       imageToSqueeze.utime = imageToPublish.utime;
-                                       imageToSqueeze.pixelformat = imageToPublish.pixelformat;
-
-
-                                       cv::Mat inputImage = cv::Mat(imageToPublish.height, imageToPublish.width, CV_8UC1, pBuffer );
-                                       cv::Mat squeezeImage = cv::Mat(imageToSqueeze.height, imageToSqueeze.width, CV_8UC1 );
-                                       cv::Size destSize;
-                                       destSize.height = imageToSqueeze.height;
-                                       destSize.width = imageToSqueeze.width;
-                                       //printf(" height %d  width %d \n",destSize.height,destSize.width);
-                                       imageToSqueeze.data.resize(imageToSqueeze.size);
-
-                                       cv::resize(inputImage,squeezeImage,destSize,0.0,0.0);
-                                       std::copy(squeezeImage.data, squeezeImage.data + imageToSqueeze.size, imageToSqueeze.data.begin());
-                                       success = squeezeLcm.publish(avtCameras[cameraNumber].smallChannelName,&imageToSqueeze);
-                                    }
-                                 else
-                                    {
-                                       success = squeezeLcm.publish(avtCameras[cameraNumber].smallChannelName,&imageToPublish);
-                                    }
-
-                              }
-                        }
-
-
+                     snprintf(topicName,32,"Vim%0d",cameraNumber);
+                     std::string theTopic(topicName);
+                    // printf(" the size:  %d\n",sizeof(imageToPublish));
+                     //avtCameras[cameraNumber].lcmChannelName
+                     int success = myLcm.publish(avtCameras[cameraNumber].lcmChannelName,&imageToPublish);
+                     printf(" camera topic %s success = %d\n",topicName,success);
                      printf(".");
                      fflush(stdout);
                   }

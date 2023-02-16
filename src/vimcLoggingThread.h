@@ -12,11 +12,13 @@
 #include "../../dsvimlib/include/IniFile.h"
 #define MAX_LOGGING_LENGTH 2048
 
+#define LOGGING_QUERY_TIME 0.5
+
 typedef struct
 {
   int ascii_log_flag;
   int last_hour;
-  char ascii_log_file_name[256];
+  char asciiLogFileName[1024];
   FILE *logAsciiFilePointer;
   char *logging_directory;
 }

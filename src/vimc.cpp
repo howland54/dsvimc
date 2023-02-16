@@ -22,11 +22,11 @@
 #include <lcm/lcm-cpp.hpp>
 
 /* jason header files */
-#include <../../dsvimlib/include/imageTalk.h>
-#include <../../dsvimlib/include/convert.h>
-#include <../../dsvimlib/include/IniFile.h>
-#include <../../dsvimlib/include//msg_util.h>
-#include <../../dsvimlib/include/global.h>
+#include "../../dsvimlib/include/imageTalk.h"
+#include "../../dsvimlib/include/convert.h"
+#include "../../dsvimlib/include/IniFile.h"
+#include "../../dsvimlib/include//msg_util.h"
+#include "../../dsvimlib/include/global.h"
 
 
 #include "vimc.h"		/* main() header file */
@@ -35,7 +35,8 @@
 #include "vimcLoggingThread.h"
 
 #include "lcmHandleThread.h"
-#include "dsplLightThread.h"
+
+#include "stereoLoggingThread.h"
 
 //----------------------------------------------------------------
 //  this is the filename which is read as the argument to the main
@@ -49,17 +50,13 @@ char *flyIniFile;
 
 startup_t startup;
 avtCameraT  avtCameras[MAX_N_OF_CAMERAS];
-dsplLightT  dsplLights[MAX_N_OF_LIGHTS];
 VimbaSystem          *vSystem;
 
 
 int   nOfAvtCameras;
-int   nOfDSPLLights;
+
 
 lcm::LCM myLcm("udpm://239.255.76.67:7667?ttl=0");
-lcm::LCM lightLcm("udpm://239.255.76.67:7667?ttl=1");
-
-lcm::LCM squeezeLcm("udpm://239.255.76.68:7667?ttl=1");
 
 //lcm::LCM myLcm;
 
@@ -99,7 +96,6 @@ main (int argc, char *argv[])
 
    FILE *ini_fd;
    nOfAvtCameras = 0;
-   nOfDSPLLights = 0;
 
    fprintf (stderr, "File %s compiled on %s at %s by Jonathan C. Howland\n", __FILE__, __DATE__, __TIME__);
 
@@ -110,13 +106,7 @@ main (int argc, char *argv[])
 
    fprintf (stderr, "lcm initialized good\n");
 
-   if(!squeezeLcm.good())
-      {
-         return 1;
-      }
-
-   fprintf (stderr, "squeeze lcm initialized good\n");
-
+   
    // set priority higher than default
    status = nice (-10);
    fprintf (stderr, "Setting priority to -10, status = %d (%s) \n", status, (status == 0) ? "SUCCESS" : "FAILED");
@@ -151,6 +141,7 @@ main (int argc, char *argv[])
    // now try to open the file
    IniFile  *iniFile = new IniFile();
    int okINI = iniFile->openIni(flyIniFile);
+   bool stereoLogging;
    if(GOOD_INI_FILE_READ == okINI)
       {
          for(int cameraNumber = 0; cameraNumber < MAX_N_OF_CAMERAS; cameraNumber++)
@@ -187,32 +178,14 @@ main (int argc, char *argv[])
                      bool binning = (bool)iniFile->readInt(cameraLabel,"BINNING",DEFAULT_BINNING);
                      avtCameras[nOfAvtCameras].desiredSettings.binning = binning;
 
-                     char *scratch = iniFile->readString(cameraLabel,"SMALL_CHANNEL_NAME",DEFAULT_CHANNEL_NAME);
+                     char *scratch = iniFile->readString(cameraLabel,"CHANNEL_NAME",DEFAULT_CHANNEL_NAME);
                      if(!strncmp(scratch,DEFAULT_CHANNEL_NAME,15))
                         {
                            scratch = strdup(cameraLabel);
                         }
-                     avtCameras[nOfAvtCameras].smallChannelName = strdup(scratch);
+                     avtCameras[nOfAvtCameras].lcmChannelName = strdup(scratch);
                      free(scratch);
 
-                     int decimationRate = iniFile->readInt(cameraLabel, "DECIMATION_FACTOR", DEFAULT_DECIMATION_FACTOR);
-                     avtCameras[nOfAvtCameras].decimationFactor = decimationRate;
-
-                     /*scratch = iniFile->readString(cameraLabel,"SQUEEZE_URL","NO_URL");
-
-                     if((avtCameras[nOfAvtCameras].decimationFactor != DEFAULT_DECIMATION_FACTOR) && strncmp(scratch,"NO_URL",6))
-                        {
-                           avtCameras[nOfAvtCameras].squeezeChannel = new lcm::LCM(scratch);
-                           if(!avtCameras[nOfAvtCameras].squeezeChannel->good())
-                              {
-                                 printf("camera %d squeeze LCM channel BAD!\n",nOfAvtCameras);
-                                 avtCameras[nOfAvtCameras].decimationFactor = 0;
-                              }
-                        }
-
-                     */
-                     double squeezeFactor = (double)iniFile->readDouble(cameraLabel, "SQUEEZE_FACTOR", DEFAULT_SQUEEZE_FACTOR);
-                     avtCameras[nOfAvtCameras].squeezeFactor = squeezeFactor;
 
                      scratch = iniFile->readString(cameraLabel,"CONFIG_FILE_NAME",NO_INITIAL_FILE_NAME);
                      avtCameras[nOfAvtCameras].xmlFileName = strdup(scratch);
@@ -232,46 +205,10 @@ main (int argc, char *argv[])
                      free(thisSN);
                   }
             }
-         /*
-          for(int lightNumber = 0; lightNumber < MAX_N_OF_LIGHTS; lightNumber++)
-            {
-               char lightLabel[32];
-               snprintf(lightLabel,32,"LIGHT_%d",lightNumber+1);
-               char *lightPosition = iniFile->readString(lightLabel,"LIGHT_POSITION", NO_LIGHT_POSITION);
-               if(!strcmp(lightPosition,NO_LIGHT_POSITION))
-                  {
-                     free(lightPosition );
-                     continue;
-                  }
-               else
-                  {
-                     dsplLights[nOfDSPLLights].lightPosition =  strdup(lightPosition);
-                     free( lightPosition);
-                  }
-               lightPosition = iniFile->readString(lightLabel,"LIGHT_ID", NO_LIGHT_POSITION);
-               if(!strcmp(lightPosition,NO_LIGHT_POSITION))
-                  {
-                     char lightString[5];
-                     snprintf(lightString,4,"%04d",nOfDSPLLights);
-                     dsplLights[nOfDSPLLights].lightID = strdup(lightString);
-                     free(lightPosition );
-                  }
-               else
-                  {
-                     dsplLights[nOfDSPLLights].lightID =  strndup(lightPosition,4);
-                     free( lightPosition);
-                  }
-               lightPosition = iniFile->readString(lightLabel,"COMMS_TO_CHANNEL","ttyA3i");
-               dsplLights[nOfDSPLLights].commsOutChannel = strdup(lightPosition);
-               lightPosition = iniFile->readString(lightLabel,"COMMS_FROM_CHANNEL","ttyA3o");
-               dsplLights[nOfDSPLLights].commsInChannel = strdup(lightPosition);
-
-               nOfDSPLLights++;
-
-            }
-            */
-
+         stereoLogging = (bool)iniFile->readInt("GENERAL","LOG_STEREO",true);
+       
       }
+
    else
       {
          fprintf (stderr, "%s ini file does not exist...exiting!\n", flyIniFile);
@@ -295,7 +232,10 @@ main (int argc, char *argv[])
    make_thread_table_entry (BUS_THREAD, "BUS_THREAD", busThread, (void *)NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
    make_thread_table_entry (LCM_RECEIVE_THREAD, "LCM_RECEIVE_THREAD", lcmHandleThread, (void *)NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
    make_thread_table_entry (LOGGING_THREAD, "LOGGING_THREAD", loggingThread, (void *)NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
-   //make_thread_table_entry (DSPLLIGHT_THREAD, "DSPLLIGHT_THREAD", dsplLightThread, (void *)NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
+   if(stereoLogging)
+       {
+         make_thread_table_entry (STEREO_LOGGING_THREAD, "STEREO_LOGGING_THREAD", stereoLoggingThread, (void *)NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
+       }
 
    for(int flyNumber = 0; flyNumber < nOfAvtCameras; flyNumber++)
       {
@@ -305,16 +245,7 @@ main (int argc, char *argv[])
          printf(" creating thread %ld %s\n",theThreadNumber,flyThreadName);
          make_thread_table_entry (FLY_THREAD_BASE + flyNumber, flyThreadName, vimcThread, (void *)theThreadNumber, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
       }
-   /*
-    * for(int lightNumber = 0; lightNumber < nOfDSPLLights; lightNumber++)
-      {
-         char lightThreadName[32];
-         snprintf(lightThreadName,31,"LIGHT_THREAD_%02d",lightNumber+1);
-         long int theThreadNumber = LIGHT_THREAD_BASE + lightNumber;
-         make_thread_table_entry(theThreadNumber,lightThreadName,nio_thread,(void *)theThreadNumber, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
-         dsplLights[lightNumber].nioThread = theThreadNumber;
-      }
-   */
+   
    // launch all the system threads
 
    for (i = 0; i < MAX_NUMBER_OF_THREADS; i++)

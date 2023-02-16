@@ -2,7 +2,7 @@
 
 This is a repository for vimba based camera control using an old-fashioned multi threaded approach
 
-
+these are wrong->
 dependencies
 ------------
 - `Vimba_v2.1.3_ARM64.tgz`

@@ -14,13 +14,20 @@
 #include <sstream>
 //#define DEBUG_LOGGING
 
+#include <lcm/lcm-cpp.hpp>
+
+
 /* local includes */
 #include "../../dsvimlib/include/time_util.h"
+#include "../../dsvimlib/include/launch_timer.h"
 
 #include "../../dsvimlib/include/convert.h"
 #include "../../dsvimlib/include/global.h"
 #include "../../dsvimlib/include/imageTalk.h"		/* jasontalk protocol and structures */
 #include "../../dsvimlib/include/msg_util.h"		/* utility functions for messaging */
+
+#include "../../habcam-lcmtypes/image/image/image_t.hpp"
+#include "../../habcam-lcmtypes/image/image/image_parameter_t.hpp"
 
 #include "vimcLoggingThread.h"
 
@@ -30,6 +37,9 @@
 
 #include <pthread.h>
 
+extern bool stereoWriteResult;
+extern bool amIStereoRecording;
+extern lcm::LCM myLcm;
 
 extern pthread_attr_t DEFAULT_ROV_THREAD_ATTR;
 
@@ -82,6 +92,9 @@ void *loggingThread (void *)
          abort ();
       }
    int success = readIniLoggingProcess (&myLog);
+   launched_timer_data_t *queryTimer;
+   queryTimer = launch_timer_new(LOGGING_QUERY_TIME,-1,LOGGING_THREAD,LOG_QUERY);
+
 
    // loop forever
    while (1)
@@ -107,6 +120,20 @@ void *loggingThread (void *)
                         msg_send( hdr.from, BUS_THREAD, SPI, strlen (msg), msg);
                         break;
                      }
+               case LOG_QUERY:
+                    {
+                        image::image_parameter_t imageParameter;
+                        imageParameter.key = "LOGGING";
+                        int stereoNum = 100;
+                        if(!stereoWriteResult)
+                        {
+                            stereoNum = -100;
+                        }
+                        imageParameter.value = std::to_string(amIStereoRecording + stereoNum);
+                        imageParameter.cameraNumber = 0;
+                        myLcm.publish("M_STATUS_PARAMETERS", &imageParameter);
+                        break;
+                    }
                   case BYE:  // received a bye message--time to give up the ghost--
                      {
 
@@ -196,14 +223,14 @@ static int logOpenAsciiLog_file (logging_t * log)
          if (log->logAsciiFilePointer != NULL)
             {
                if (0 == fclose (log->logAsciiFilePointer))
-                  printf ("LOGGING_THREAD: Closed log file %s OK\n", asciiLogFileName);
+                  printf ("LOGGING_THREAD: Closed log file %s OK\n", log->asciiLogFileName);
                else
-                  printf ("LOGGING_THREAD: ERROR closing log file %s\n", asciiLogFileName);
+                  printf ("LOGGING_THREAD: ERROR closing log file %s\n", log->asciiLogFileName);
             }
          /* create the new log file name */
          char suffix[32];
 
-         snprintf(suffix,32,"VIMDAT");
+         snprintf(suffix,32,"IMG");
          snprintf(filename,511,"%s/%04d%02d%02d_%02d%02d.%s",log->logging_directory,tm->tm_year + 1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min,suffix);
 
          /* open the new file */
@@ -225,8 +252,8 @@ static int logOpenAsciiLog_file (logging_t * log)
                printf ("LOGGING_THREAD: log->logAsciiFilePointer was false\n");
                printf ("ascii file pointer = %x\n", (long int) log->logAsciiFilePointer);
 #endif
-               strcpy (asciiLogFileName, filename);
-               printf ("LOGGING_THREAD: Opened log file %s OK\n", asciiLogFileName);
+               strcpy (log->asciiLogFileName, filename);
+               printf ("LOGGING_THREAD: Opened log file %s OK\n", log->asciiLogFileName);
             }
       }
    return (status);
@@ -257,7 +284,8 @@ int logThisNow (logging_t * log, char *record_data)
 
    if (log->logAsciiFilePointer != NULL)
       {
-         fprintf(log->logAsciiFilePointer, "%s\n", record_data);
+         int items = fprintf(log->logAsciiFilePointer, "%s\n", record_data);
+         fflush(log->logAsciiFilePointer);
       }
 
 #ifdef DEBUG_LOGGING
