@@ -33,6 +33,9 @@
 #include "vimcBusThread.h"
 #include "vimcThread.h"
 #include "vimcLoggingThread.h"
+#include "sensorThread.h"
+#include "msThread.h"
+#include "msNetThread.h"
 
 #include "lcmHandleThread.h"
 
@@ -94,7 +97,6 @@ main (int argc, char *argv[])
 
    size_t size;
 
-   FILE *ini_fd;
    nOfAvtCameras = 0;
 
    fprintf (stderr, "File %s compiled on %s at %s by Jonathan C. Howland\n", __FILE__, __DATE__, __TIME__);
@@ -206,7 +208,7 @@ main (int argc, char *argv[])
                   }
             }
          stereoLogging = (bool)iniFile->readInt("GENERAL","LOG_STEREO",true);
-       
+         iniFile->closeIni();
       }
 
    else
@@ -232,6 +234,15 @@ main (int argc, char *argv[])
    make_thread_table_entry (BUS_THREAD, "BUS_THREAD", busThread, (void *)NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
    make_thread_table_entry (LCM_RECEIVE_THREAD, "LCM_RECEIVE_THREAD", lcmHandleThread, (void *)NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
    make_thread_table_entry (LOGGING_THREAD, "LOGGING_THREAD", loggingThread, (void *)NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
+   make_thread_table_entry (SENSOR_THREAD, "SENSOR_THREAD", sensorThread, (void *)NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
+   make_thread_table_entry (CTD_THREAD, "CTD_THREAD", nio_thread, (void *)sensorThread, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
+   make_thread_table_entry (FATHOMETER_THREAD, "FATHOMETER_THREAD", nio_thread, (void *)sensorThread, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
+   make_thread_table_entry (GPS_THREAD, "GPS_THREAD", nio_thread, (void *)sensorThread, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
+   make_thread_table_entry (ALTIMETER_THREAD, "ALTIMETER_THREAD", nio_thread, (void *)sensorThread, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
+
+   make_thread_table_entry (MS_NET_THREAD,"MS_NET_THREAD",msNetThread, (void *) MS_NET_THREAD, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
+   make_thread_table_entry (MS_NIO_THREAD, "MS_NIO_THREAD", nio_thread, (void *) MS_NIO_THREAD, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
+
    if(stereoLogging)
        {
          make_thread_table_entry (STEREO_LOGGING_THREAD, "STEREO_LOGGING_THREAD", stereoLoggingThread, (void *)NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);

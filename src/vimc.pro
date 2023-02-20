@@ -62,9 +62,13 @@ LIBS += -lopencv_videoio
 }
 
 SOURCES += \
+    AVTAttribute.cpp \
     CameraObserver.cpp \
     FrameObserver.cpp \
     lcmHandleThread.cpp \
+    microstrain.cpp \
+    msNetThread.cpp \
+    sensorThread.cpp \
     vimc.cpp \
     vimcBusThread.cpp \
     vimcThread.cpp \
@@ -77,6 +81,9 @@ HEADERS += \
     FrameObserver.h \
     lcmHandleThread.h \
     lcmRecieveThread.h \
+    microstrain.h \
+    msNetThread.h \
+    sensorThread.h \
     vimc.h \
     vimcBusThread.h \
     vimcThread.h \
