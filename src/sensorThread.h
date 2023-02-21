@@ -1,28 +1,13 @@
 /* ----------------------------------------------------------------------
 
-Sensor thread for ROV control system
 
-Modification History:
-DATE         AUTHOR  COMMENT
-23-JUL-2000  LLW     Created and written.
-04 MAR 02    LLW     Commisioned altimeter in new controller, added 
-error and temp to altimeter data struct. 
-07 JUL 02    LLW     Removed filtered depth from depth sensor data struct
-07 JUL 02    LLW     Changed vehicle depth sensor from single to array of structs
-14 Nov 02    jch     added external_fix_t and external fix to structures
-27 OCT 2003  JCK&LLW XVISION
-13 MAY 2004 LLW Cleaned up TCM2 parsing code and assignment in sensor_thread.cpp
-13 Oct 2004 LLW Enabled DVZ processing for Auto-Altitude
-13 OCT 2004  LLW      Created dvlnav_data and dvlnav_data_last in sensor_t.
-                      Retired dvlnav_state and dvlnav_state_last from sensor_t,
-                      the dvlnav state data is now in dvlnav_data.state and  
-                      dvlnav_data_last.state 
-20 Feb 2023   jch     used as shell for habcam sensor thread
+20 Feb 2023   jch     former rov code used as shell for habcam sensor thread
 ---------------------------------------------------------------------- */
 #ifndef SENSOR_PROCESS_INC
 #define SENSOR_PROCESS_INC
 
 #include <pthread.h>
+#include "nmea.h"
 
 
 // ----------------------------------------------------------------------
@@ -53,9 +38,43 @@ extern char *flyIniFile;
 
 extern void *sensorThread (void *);
 
+#define  UNKNOWN_SOUND_SPEED     -999.0
+#define  UNKNOWN_SALINITY        -99.9
+
+#define MAX_MESSAGE_LENGTH  1024
 
 
 #define NUM_DEPTH_SENSORS 1
+
+typedef struct
+{
+  double conductivity;
+  double temperature;
+  double depth;
+  double  salinity;
+  double  pressure;
+  double  sound_velocity;
+  double  O2;
+  int valid_parse;
+  int valid_data;
+  int bad_cnt;			//number bad parses since last good one
+}
+ctd_t;
+
+typedef struct
+{
+  double pos;
+  double temp;
+  int    error;
+}
+altimeter_t;
+
+typedef struct
+{
+    double  latitude;
+    double  longitude;
+}
+gps_t;
 
 /* ====================================================================== 
    Sensor data structure: Contains readings from all sensors in
@@ -78,6 +97,13 @@ typedef struct
   unsigned msgs_sent;
   unsigned msgs_received;
   int verbose_mode;
+
+  ctd_t     ctd;
+  altimeter_t   altimeter;
+  altimeter_t   fathometer;
+  double        fathometerMultiplier;
+  gps_t         vesselPosition;
+
 
 
   

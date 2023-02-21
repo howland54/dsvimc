@@ -68,6 +68,7 @@ SOURCES += \
     lcmHandleThread.cpp \
     microstrain.cpp \
     msNetThread.cpp \
+    nmea.cpp \
     sensorThread.cpp \
     vimc.cpp \
     vimcBusThread.cpp \
@@ -83,6 +84,7 @@ HEADERS += \
     lcmRecieveThread.h \
     microstrain.h \
     msNetThread.h \
+    nmea.h \
     sensorThread.h \
     vimc.h \
     vimcBusThread.h \
