@@ -27,10 +27,15 @@
 #include "../../dsvimlib/include/IniFile.h"
 
 
+char    *altimeterChannelName;
+char    *ctdChannelName;
+char    *gpsChannelName;
+char    *fathometerChannelName;
 
 #include "sensorThread.h"	/* sensor thread */
 extern thread_table_entry_t global_thread_table[MAX_NUMBER_OF_THREADS];
 
+extern lcm::LCM myLcm;
 
 // ----------------------------------------------------------------------
 // sensor data structure
@@ -73,19 +78,13 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
         {
         case PNG:			/* respond to ping request */
             {
-
-
                 // respond with a SPI (Status Ping) message
                 msg_send(  in_hdr->from, in_hdr->to, SPI, 0,NULL);
-
-
-
                 break;
             }
 
         case SPI:			// recieved a SPI (Status Ping) message
             break;
-
 
 
         case BYE:  // received a bye message--time to give up the ghost--
@@ -133,6 +132,17 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
                                     sensor->ctd.sound_velocity = UNKNOWN_SOUND_SPEED;
                                     sensor->ctd.salinity = UNKNOWN_SALINITY;
                                 }
+                            else
+                                {
+                                    break;
+                                }
+                            marine_sensor::MarineSensorCtd_t myCtd;
+                            myCtd.depth = sensor->ctd.depth;
+                            myCtd.sea_water_electrical_conductivity = c;
+                            myCtd.sea_water_pressure = p;
+                            myCtd.sea_water_temperature = t;
+                            myCtd.sea_water_salinity = sensor->ctd.salinity;
+                            int success = myLcm.publish(ctdChannelName,&myCtd);
                             break;
                         }
                     case FATHOMETER_THREAD:
@@ -152,6 +162,11 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
                                         {
                                             sensor->vesselPosition.latitude = RAD_TO_DEGREES(gpg.latitude);
                                             sensor->vesselPosition.longitude = RAD_TO_DEGREES(gpg.longitude);
+
+                                            marine_sensor::MarineSensorGPS_t myGPS;
+                                            myGPS.latitude = sensor->vesselPosition.latitude;
+                                            myGPS.longitude = sensor->vesselPosition.longitude;
+                                            int success = myLcm.publish(gpsChannelName,&myGPS);
                                         }
 
                                 }
@@ -162,6 +177,10 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
                                         {
                                             sensor->vesselPosition.latitude = RAD_TO_DEGREES(gpg.latitude);
                                             sensor->vesselPosition.longitude = RAD_TO_DEGREES(gpg.longitude);
+                                            marine_sensor::MarineSensorGPS_t myGPS;
+                                            myGPS.latitude = sensor->vesselPosition.latitude;
+                                            myGPS.longitude = sensor->vesselPosition.longitude;
+                                            int success = myLcm.publish(gpsChannelName,&myGPS);
                                         }
 
                                 }
@@ -192,6 +211,9 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
                                     if(items)
                                         {
                                             sensor->fathometer.pos = myWaterDepth * sensor->fathometerMultiplier;
+                                            marine_sensor::MarineSensorFathometer_t myFathometer;
+                                            myFathometer.depth = sensor->fathometer.pos;
+                                            int success = myLcm.publish(fathometerChannelName,&myFathometer);
                                         }
                                 }
 
@@ -213,6 +235,13 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
                                         {
                                             sensor->altimeter.pos = range;
                                         }
+                                }
+                            if(items)
+                                {
+                                    marine_sensor::marineSensorAltimeter_t myAltimeter;
+                                    myAltimeter.altitude = range;
+                                    int success = myLcm.publish(altimeterChannelName,&myAltimeter);
+
                                 }
                             break;
                         }
@@ -258,6 +287,7 @@ void *sensorThread (void *)
     msg_hdr_t in_hdr = { 0 };
     unsigned char in_data[MSG_DATA_LEN_MAX] = { 0 };
 
+
     int msg_success = msg_queue_new(SENSOR_THREAD, "sensor thread");
     if(msg_success != MSG_OK)
         {
@@ -279,6 +309,11 @@ void *sensorThread (void *)
             rollOffset =    iniFile->readDouble("MICROSTRAIN","ROLL", DEFAULT_MICROSTRAIN_ROLL_OFFSET);
             pitchOffset =   iniFile->readDouble( "MICROSTRAIN","PITCH",DEFAULT_MICROSTRAIN_PITCH_OFFSET);
             headingOffset = iniFile->readDouble( "MICROSTRAIN","HEADING",DEFAULT_MICROSTRAIN_HDG_OFFSET);
+
+            altimeterChannelName = iniFile->readString("ALTIMETER","CHANNEL_NAME", "ALTIMETER");
+            ctdChannelName = iniFile->readString("CTD","CHANNEL_NAME","CTD");
+            gpsChannelName = iniFile->readString("GPS","CHANNEL_NAME","GPS");
+            fathometerChannelName = iniFile->readString("FATHOMETER","CHANNEL_NAME","FATHOMETER");
             iniFile->closeIni();
         }
     else

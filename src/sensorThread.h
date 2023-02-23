@@ -7,9 +7,15 @@
 #define SENSOR_PROCESS_INC
 
 #include <pthread.h>
+
+#include <lcm/lcm-cpp.hpp>
+
 #include "nmea.h"
 
-
+#include "../../habcam-lcmtypes/marine_sensor/marine_sensor/marineSensorAltimeter_t.hpp"
+#include "../../habcam-lcmtypes/marine_sensor/marine_sensor/MarineSensorCtd_t.hpp"
+#include "../../habcam-lcmtypes/marine_sensor/marine_sensor/MarineSensorGPS_t.hpp"
+#include "../../habcam-lcmtypes/marine_sensor/marine_sensor/MarineSensorFathometer_t.hpp"
 // ----------------------------------------------------------------------
 // DEBUG FLAG:  Uncomment these and recompile to get verbose debugging 
 // ----------------------------------------------------------------------
