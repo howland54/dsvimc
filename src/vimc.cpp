@@ -34,7 +34,6 @@
 #include "vimcThread.h"
 #include "vimcLoggingThread.h"
 #include "sensorThread.h"
-#include "msThread.h"
 #include "msNetThread.h"
 
 #include "lcmHandleThread.h"

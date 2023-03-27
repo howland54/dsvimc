@@ -26,7 +26,7 @@ LIBS += -L/usr/local/lib
 LIBS += -L../../dsvimlib/lib
 LIBS += -ldsvimlib
 LIBS += -llcm
-LIBS += -lmesobot-lcmtypes
+#LIBS += -lmesobot-lcmtypes
 
 
 contains(DEFINES,TX2BUILD){
