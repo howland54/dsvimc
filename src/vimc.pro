@@ -70,6 +70,7 @@ SOURCES += \
     msNetThread.cpp \
     nmea.cpp \
     sensorThread.cpp \
+    simulationThread.cpp \
     vimc.cpp \
     vimcBusThread.cpp \
     vimcThread.cpp \
@@ -86,6 +87,7 @@ HEADERS += \
     msNetThread.h \
     nmea.h \
     sensorThread.h \
+    simulationThread.h \
     vimc.h \
     vimcBusThread.h \
     vimcThread.h \

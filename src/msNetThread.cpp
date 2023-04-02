@@ -110,8 +110,8 @@ void * msNetThread (void *thread_num)
    int okINI = iniFile->openIni(flyIniFile);
    if(GOOD_INI_FILE_READ == okINI)
       {
-         device = iniFile->readString("MS_THREAD", "DEVICE", "null");
-         fclose(ini_fd);
+        // device = iniFile->readString("MS_THREAD", "DEVICE", "null");
+         iniFile->closeIni();
       }
    else
        {

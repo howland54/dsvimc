@@ -91,6 +91,8 @@ typedef struct
    double                  startCameraTime;
    bool                    saveImages;
    bool                    doNotUseInStereoLogging;
+   bool                    saveJPG;
+   char                    *jpgPrefix;
 
 } avtCameraT;
 
