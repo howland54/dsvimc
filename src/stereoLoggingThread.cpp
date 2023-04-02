@@ -118,13 +118,13 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             leftImage = workingImage.clone();
 
 
-            leftColorImage = cv::Mat(image->height, image->width, CV_8UC3);
-            leftNormalizedImage = cv::Mat(image->height, image->width, CV_16UC1);
-            dst = cv::Mat(image->height, image->width, CV_16UC3);;
-            cv::normalize(leftImage,leftNormalizedImage,0, 255,cv::NORM_MINMAX);
-            leftNormalizedImage.convertTo(dst,CV_8U);
-            cv::cvtColor(dst,leftColorImage,cv::COLOR_BayerBG2BGR,0);
+            leftColorImage = cv::Mat(image->height, image->width, CV_16UC3);
+            //leftNormalizedImage = cv::Mat(image->height, image->width, CV_16UC1);
+            dst = cv::Mat(image->height, image->width, CV_8UC3);;
+            //cv::normalize(leftImage,leftNormalizedImage,0, 255,cv::NORM_MINMAX);
 
+            cv::cvtColor(leftImage,leftColorImage,cv::COLOR_BayerBG2BGR,0);
+            leftColorImage.convertTo(dst,CV_8UC3,0.003891051); // 1/257 to get the full range
 
             leftImageToPublish.width = image->width;
             leftImageToPublish.height = image->height;
@@ -132,7 +132,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             leftImageToPublish.data.resize((uint32_t)leftImageToPublish.size);
             leftImageToPublish.pixelformat = image::image_t::PIXEL_FORMAT_BGR;
             leftImageToPublish.utime =image->utime;
-            std::copy(leftColorImage.datastart, leftColorImage.datastart +  leftImageToPublish.size, leftImageToPublish.data.begin());
+            std::copy(dst.datastart, dst.datastart +  leftImageToPublish.size, leftImageToPublish.data.begin());
             int success = myLcm.publish("LeftColor",&leftImageToPublish);
 
 
@@ -158,12 +158,13 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             rightImage = workingImage.clone();
 
 
-            rightColorImage = cv::Mat(image->width, image->height, CV_8UC3);
-            rightNormalizedImage = cv::Mat(image->height, image->width, CV_16UC1);
-            dst = cv::Mat(image->height, image->width, CV_16UC3);;
-            cv::normalize(rightImage,rightNormalizedImage,0, 255,cv::NORM_MINMAX);
-            rightNormalizedImage.convertTo(dst,CV_8U);
-            cv::cvtColor(dst,rightColorImage,cv::COLOR_BayerBG2BGR,0);
+            rightColorImage = cv::Mat(image->height, image->width, CV_16UC3);
+            //rightNormalizedImage = cv::Mat(image->height, image->width, CV_16UC1);
+            dst = cv::Mat(image->height, image->width, CV_8UC3);;
+            //cv::normalize(rightImage,rightNormalizedImage,0, 255,cv::NORM_MINMAX);
+
+            cv::cvtColor(rightImage,rightColorImage,cv::COLOR_BayerBG2BGR,0);
+            rightColorImage.convertTo(dst,CV_8UC3,0.003891051); // 1/257 to get the full range
 
             rightImageToPublish.width = image->width;
             rightImageToPublish.height = image->height;
@@ -171,7 +172,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             rightImageToPublish.data.resize((uint32_t)rightImageToPublish.size);
             rightImageToPublish.pixelformat = image::image_t::PIXEL_FORMAT_BGR;
             rightImageToPublish.utime =image->utime;
-            std::copy(rightColorImage.datastart, rightColorImage.dataend , rightImageToPublish.data.begin());
+            std::copy(dst.datastart, dst.datastart +  rightImageToPublish.size , rightImageToPublish.data.begin());
             //std::string theTopic("RightColor");
             int success = myLcm.publish("RightColor",&rightImageToPublish);
 
@@ -311,14 +312,14 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             // 10 June 2015 jch replace conductivity with salinity
 
             //fprintf(logger->theLogDirFile,"%s,%s\n",unqualifiedFileName,noCommaDescription);
-
+            leftTime = 0;
+            rightTime = 0;
 
         }
 
 
 
-            leftTime = 0;
-            rightTime = 0;
+
 
             // int logLen = snprintf(loggingRecord,2047,"IMG %04d/%02d/%02d %02d:%02d:%02d.%03d IMWRITE %s %d %0.2f %0.2f",year,month+1,day,hour,minute,gmtime_time.tm_sec,ftime_time.millitm,fileName,avtCameras[cameraNumber].actualSettings.cameraSynced,
             //msg_send(LOGGING_THREAD, ANY_THREAD, LOG,logLen,loggingRecord);
