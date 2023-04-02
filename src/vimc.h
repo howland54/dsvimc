@@ -93,6 +93,7 @@ typedef struct
    bool                    doNotUseInStereoLogging;
    bool                    saveJPG;
    char                    *jpgPrefix;
+   char                    *jpgSaveRoot;
 
 } avtCameraT;
 
