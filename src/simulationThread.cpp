@@ -41,6 +41,7 @@
 
 #include "vimc.h"
 
+#include "sensorThread.h"
 
 /* posix header files */
 #define  POSIX_SOURCE 1
@@ -56,6 +57,11 @@ extern lcm::LCM myLcm;
 extern pthread_attr_t DEFAULT_ROV_THREAD_ATTR;
 
 #define DEFAULT_IMAGE_FRAME_RATE    1.0
+#define DEFAULT_CTD_RATE            2.0
+#define DEFAULT_ALTIMETER_RATE      2.1
+#define DEFAULT_ATTITUDE_RATE       10.0
+#define DEFAULT_GPS_RATE            1.0
+#define DEFAULT_FATHOMETER_RATE     1.5
 
 
 
@@ -73,8 +79,18 @@ void *simulationThread (void *)
     msg_hdr_t hdr = { 0 };
     unsigned char data[MSG_DATA_LEN_MAX] = { 0 };
     double imageFrameRate = 1.0;
+    double ctdRate = DEFAULT_CTD_RATE;
+    double altimeterRate = DEFAULT_ALTIMETER_RATE;
+    double attitudeRate = DEFAULT_ATTITUDE_RATE;
+    double gpsRate = DEFAULT_GPS_RATE;
+    double fathometerRate = DEFAULT_FATHOMETER_RATE;
 
     char *imageFileName = NULL;
+    char *ctdChannelName = NULL;
+    char *altimeterChannelName = NULL;
+    char *attitudeChannelName = NULL;
+    char *gpsChannelName = NULL;
+    char *fathometerChannelName = NULL;
     // wakeup message
     printf ("SIMULATION_THREAD (thread %d) initialized \n", SIMULATION_THREAD);
     printf ("SIMULATION_THREAD File %s compiled at %s on %s\n", __FILE__, __TIME__, __DATE__);
@@ -99,6 +115,18 @@ void *simulationThread (void *)
                     free(scratchString);
                 }
             imageFrameRate = iniFile->readDouble("SIMULATION", "IMAGE_FRAME_RATE", DEFAULT_IMAGE_FRAME_RATE);
+            ctdRate = iniFile->readDouble("SIMULATION", "CTD_RATE", DEFAULT_CTD_RATE);
+            altimeterRate = iniFile->readDouble("SIMULATION", "ALTIMETER_RATE", DEFAULT_ALTIMETER_RATE);
+            attitudeRate = iniFile->readDouble("SIMULATION", "ATTITUDE_RATE", DEFAULT_ATTITUDE_RATE);
+            gpsRate = iniFile->readDouble("SIMULATION", "GPS_RATE", DEFAULT_GPS_RATE);
+            fathometerRate = iniFile->readDouble("SIMULATION", "FATHOMETER_RATE", DEFAULT_FATHOMETER_RATE);
+
+            ctdChannelName = iniFile->readString("CTD","CHANNEL_NAME","CTD");
+            altimeterChannelName = iniFile->readString("ALTIMETER","CHANNEL_NAME", "ALTIMETER");
+            attitudeChannelName = iniFile->readString("MICROSTRAIN","CHANNEL_NAME", "ATTITUDE");
+            gpsChannelName = iniFile->readString("GPS","CHANNEL_NAME","GPS");
+            fathometerChannelName = iniFile->readString("FATHOMETER","CHANNEL_NAME","FATHOMETER");
+
         }
     else
         {
@@ -160,6 +188,11 @@ void *simulationThread (void *)
 
 
     launched_timer_data_t * imageTimer = launch_timer_new(timerInterval, -1, SIMULATION_THREAD, SIMULATION_TICK1);
+    launched_timer_data_t * ctdTimer = launch_timer_new(1.0/ctdRate, -1,SIMULATION_THREAD, SIMULATION_TICK2);
+    launched_timer_data_t * altimeterTimer = launch_timer_new(1.0/altimeterRate, -1, SIMULATION_THREAD, SIMULATION_TICK3);
+    launched_timer_data_t * attitudeTimer = launch_timer_new(1.0/attitudeRate, -1, SIMULATION_THREAD, SIMULATION_TICK4);
+    launched_timer_data_t * gpsTimer = launch_timer_new(1.0/gpsRate, -1, SIMULATION_THREAD, SIMULATION_TICK5);
+    launched_timer_data_t * fathometerTimer = launch_timer_new(1.0/fathometerRate, -1, SIMULATION_THREAD, SIMULATION_TICK6);
 
 
     int msg_success = msg_queue_new(SIMULATION_THREAD, "simulation thread");
@@ -171,6 +204,28 @@ void *simulationThread (void *)
             fflush (stderr);
             abort ();
         }
+    // initialize some sensor data
+
+    double simDepth = 50.0;
+    double simT = 10.0;
+
+    double simAlt = 3.1;
+    double simPitch = 0.0;
+    double simRoll = 0.0;
+    double simHead = 30.0;
+    double simLatitude = 41.55;
+    double simLon = -70.61;
+    double simFathometer = simDepth + simAlt;
+
+    double depthNoise = 0.3;
+    double tNoise = 0.2;
+    double altNoise = 0.8;
+    double attitudeNoise = 0.8;
+    double lonNoise = 0.002;
+    double latNoise = 0.0025;
+    double fathometerNoise = 0.9;
+    double defaultConductivity = 0.0034567;
+
 
 
     // loop forever
@@ -200,6 +255,63 @@ void *simulationThread (void *)
                                 success = myLcm.publish(avtCameras[1].lcmChannelName,&rightImageToPublish);
 
 
+                                break;
+                            }
+                        case SIMULATION_TICK2:
+                            {
+                                double depthBias = (((double)rand() / RAND_MAX) - 0.5) * depthNoise;
+                                double tBias = (((double)rand() / RAND_MAX) - 0.5) * tNoise;
+                                rov_time_t ctdTime = rov_get_time();
+                                marine_sensor::MarineSensorCtd_t myCtd;
+                                myCtd.depth = simDepth + depthBias;
+                                myCtd.sea_water_electrical_conductivity = UNKNOWN_SALINITY;
+                                myCtd.sea_water_pressure = myCtd.depth/PRESSURE_TO_DEPTH;
+                                myCtd.sea_water_temperature = simT + tBias;
+                                myCtd.sea_water_salinity = defaultConductivity;
+
+                                int success = myLcm.publish(ctdChannelName,&myCtd);
+                                break;
+                            }
+                        case SIMULATION_TICK3:
+                            {
+                                double altBias = (((double)rand() / RAND_MAX) - 0.5) * altNoise;
+                                rov_time_t altimeterTime = rov_get_time();
+                                marine_sensor::marineSensorAltimeter_t myAltimeter;
+                                myAltimeter.altitude = simAlt + altBias;
+                                int success = myLcm.publish(altimeterChannelName,&myAltimeter);
+
+                                break;
+                            }
+                        case SIMULATION_TICK4:
+                            {
+                                double attitudeBias = (((double)rand() / RAND_MAX) - 0.5) * attitudeNoise;
+                                rov_time_t attitudeTime = rov_get_time();
+                                marine_sensor::MarineSensorAttitudeSensor_t myAttitude;
+                                myAttitude.heading = simHead + attitudeBias;  // check units
+                                myAttitude.pitch = simPitch + attitudeBias;
+                                myAttitude.roll = simRoll + attitudeBias;
+
+                                int success = myLcm.publish(attitudeChannelName,&myAttitude);
+                                break;
+                            }
+                        case SIMULATION_TICK5:
+                            {
+                                double latitudeBias = (((double)rand() / RAND_MAX) - 0.5) * latNoise;
+                                double longitudeBias = (((double)rand() / RAND_MAX) - 0.5) * lonNoise;
+                                marine_sensor::MarineSensorGPS_t myGPS;
+                                myGPS.latitude = simLatitude + latitudeBias;
+                                myGPS.longitude = simLon + longitudeBias;
+                                rov_time_t gpsTime = rov_get_time();
+                                int success = myLcm.publish(gpsChannelName,&myGPS);
+                                break;
+                            }
+                        case SIMULATION_TICK6:
+                            {
+                                double fathometerBias = (((double)rand() / RAND_MAX) - 0.5) * fathometerNoise;
+                                rov_time_t fathometerTime = rov_get_time();
+                                marine_sensor::MarineSensorFathometer_t myFathometer;
+                                myFathometer.depth = simFathometer + fathometerBias;
+                                int success = myLcm.publish(fathometerChannelName,&myFathometer);
                                 break;
                             }
                         case PNG:

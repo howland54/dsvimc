@@ -18,6 +18,9 @@
 #include <iostream>
 #include <sstream>
 
+#include <exiv2/exiv2.hpp>
+
+
 /* local includes */
 #include "../../dsvimlib/include/time_util.h"
 
@@ -338,6 +341,8 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
 
     if(avtCameras[whichCamera].saveJPG)
         {
+            Exiv2::XmpParser::initialize();
+            ::atexit(Exiv2::XmpParser::terminate);
             double theImageTime;
             if(leftCameraID == whichCamera)
                 {
@@ -411,9 +416,10 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             snprintf(jpgPrefix,511,"%s%s",avtCameras[whichCamera].jpgPrefix,recordingPrefix);
             int numChars = makeTimeString(theImageTime,jpgImageTimeString,jpgPrefix, "jpg");
             snprintf(jpgImageName,767,"%s/%s",theJPGDataDir,jpgImageTimeString);
-            if(0 == whichCamera)
+            bool jpgWriteResult
+                    ;if(0 == whichCamera)
                 {
-                    bool jpgWriteResult = cv::imwrite(jpgImageName,dst);
+                    jpgWriteResult = cv::imwrite(jpgImageName,dst);
                     /*cv::namedWindow("left");
                                    cv::imshow("lefts",leftColorImage);
                                      cv::waitKey(0);
@@ -421,7 +427,15 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                 }
             else
                 {
-                    bool jpgWriteResult = cv::imwrite(jpgImageName,dst);
+                    jpgWriteResult = cv::imwrite(jpgImageName,dst);
+                }
+            if(jpgWriteResult)
+                {
+                    Exiv2::Image::AutoPtr image = Exiv2::ImageFactory::open(jpgImageName);
+                    image->readMetadata();
+                    Exiv2::ExifData &exifData = image->exifData();
+                    exifData["Exif.Image.ImageDescription"] = "An ASCII Exif description added with Exiv2";
+                    image->writeMetadata();
                 }
         }
 
