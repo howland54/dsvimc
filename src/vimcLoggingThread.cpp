@@ -230,7 +230,7 @@ static int logOpenAsciiLog_file (logging_t * log)
          /* create the new log file name */
          char suffix[32];
 
-         snprintf(suffix,32,"IMG");
+         snprintf(suffix,32,"HAB");
          snprintf(filename,511,"%s/%04d%02d%02d_%02d%02d.%s",log->logging_directory,tm->tm_year + 1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min,suffix);
 
          /* open the new file */
@@ -252,7 +252,7 @@ static int logOpenAsciiLog_file (logging_t * log)
                printf ("LOGGING_THREAD: log->logAsciiFilePointer was false\n");
                printf ("ascii file pointer = %x\n", (long int) log->logAsciiFilePointer);
 #endif
-               strcpy (log->asciiLogFileName, filename);
+               strncpy (log->asciiLogFileName, filename,1023);
                printf ("LOGGING_THREAD: Opened log file %s OK\n", log->asciiLogFileName);
             }
       }

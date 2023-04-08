@@ -16,6 +16,7 @@
 #include "../../habcam-lcmtypes/marine_sensor/marine_sensor/MarineSensorCtd_t.hpp"
 #include "../../habcam-lcmtypes/marine_sensor/marine_sensor/MarineSensorGPS_t.hpp"
 #include "../../habcam-lcmtypes/marine_sensor/marine_sensor/MarineSensorFathometer_t.hpp"
+#include "../../habcam-lcmtypes/marine_sensor/marine_sensor/MarineSensorAttitudeSensor_t.hpp"
 // ----------------------------------------------------------------------
 // DEBUG FLAG:  Uncomment these and recompile to get verbose debugging 
 // ----------------------------------------------------------------------
@@ -96,13 +97,6 @@ gps_t;
 /* a structure for scientific unit sensor readings */
 typedef struct
 {
-  // mutex for shared memory access  
-  pthread_mutex_t mutex;
-
-  // housekeeping stuff used internally in sensor thread
-  unsigned msgs_sent;
-  unsigned msgs_received;
-  int verbose_mode;
 
   ctd_t     ctd;
   altimeter_t   altimeter;
@@ -117,9 +111,5 @@ typedef struct
 }
 sensor_t;
 
-
-
-void sensor_thread_get_data (sensor_t * data);
-extern int read_sensor_config(FILE * ini_fd,sensor_t *sensor);
 
 #endif

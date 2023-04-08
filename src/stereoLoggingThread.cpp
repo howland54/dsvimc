@@ -38,13 +38,13 @@
 #include <pthread.h>
 #include "vimc.h"
 extern avtCameraT  avtCameras[MAX_N_OF_CAMERAS];
-char  *stereoSaveRoot;
 char *imgRoot;
 bool  saveStereo;
 extern int   nOfAvtCameras;
 
 long int leftTime;
 long int rightTime;
+bool  makeTenMinuteLogFiles;
 
 bool stereoWriteResult;
 
@@ -163,6 +163,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
     char theDataDir[512];
     char theJPGDataDir[512];
     char description[1024];
+    char loggingRecord[2048];
 
     theStereoEvent.imageState = 0;
     image::image_t leftImageToPublish;
@@ -317,19 +318,30 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
 
                     if(needNewDirectory)
                         {
+
                             snprintf(theDataDir,511,"%s/%04d%02d%02d/%04d%02d%02d_%02d/%04d%02d%02d_%02d%02d",imgRoot,year,month+1,day,
                                      year,month+1,day,hour,
                                      year,month+1,day,hour,trialTenMinute );
-                            int directoryRetCode = mkdir_p(theDataDir,ACCESSPERMS);
-                            char dataFileName[512];
-                            snprintf(dataFileName,511,"%s/%04d%02d%02d_%02d%02d.img",imgRoot,year,month+1,day,hour,trialTenMinute);
-                            if(tenMinuteLogFile)
+                            struct stat sb;
+                            if (stat(theDataDir, &sb) != 0)
                                 {
-                                    fclose(tenMinuteLogFile);
+                                    if(tenMinuteLogFile)
+                                        {
+                                            fclose(tenMinuteLogFile);
+                                        }
+                                    int directoryRetCode = mkdir_p(theDataDir,ACCESSPERMS);
+                                    char dataFileName[512];
+                                    if(makeTenMinuteLogFiles)
+                                        {
+                                            snprintf(dataFileName,511,"%s/%04d%02d%02d_%02d%02d.img",imgRoot,year,month+1,day,hour,trialTenMinute);
+                                            tenMinuteLogFile = fopen(dataFileName,"wa");
+                                        }
+                                    int logLen = snprintf(loggingRecord,2047,"SYS %04d/%02d/%02d %02d:%02d:%02d.%03d MKDIR %s RETCODE %d",year,month+1,day,hour,minute,gmtime_time.tm_sec,ftime_time.millitm,theDataDir,directoryRetCode);
+                                    msg_send(LOGGING_THREAD, ANY_THREAD, LOG,logLen,loggingRecord);
                                 }
-                            tenMinuteLogFile = fopen(dataFileName,"wa");
-                            //int logLen = snprintf(loggingRecord,2047,"SYS %04d/%02d/%02d %02d:%02d:%02d.%03d MKDIR %s RETCODE %d",year,month+1,day,hour,minute,gmtime_time.tm_sec,ftime_time.millitm,theDataDir,directoryRetCode);
-                            //msg_send(LOGGING_THREAD, ANY_THREAD, LOG,logLen,loggingRecord);
+
+
+
                         }
                     char imageTimeString[256];
                     std::vector<int> tags;
@@ -353,45 +365,59 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                     int theImageWidthBytes = image->width * 4;
 
                     TIFF *out= TIFFOpen(imageName, "w");
-                    TIFFSetField (out, TIFFTAG_IMAGEWIDTH, image->width*2);  // set the width of the image
-                    TIFFSetField(out, TIFFTAG_IMAGELENGTH, image->height);    // set the height of the image
-                    TIFFSetField(out, TIFFTAG_SAMPLESPERPIXEL, 1);   // set number of channels per pixel
-                    TIFFSetField(out, TIFFTAG_BITSPERSAMPLE, 16);    // set the size of the channels
-                    TIFFSetField(out, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);    // set the origin of the image.
-                    //   Some other essential fields to set that you do not have to understand for now.
-                    TIFFSetField(out, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
-                    TIFFSetField(out, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
-                    TIFFSetField(out, TIFFTAG_COMPRESSION, COMPRESSION_NONE);
-
-
-
-                    tsize_t linebytes =  theImageWidthBytes;     // length in memory of one row of pixel in the image.
-                    unsigned char *buf = NULL;        // buffer used to store the row of pixel information for writing to file
-
-
-                    // We set the strip size of the file to be size of one row of pixels
-                    TIFFSetField(out, TIFFTAG_ROWSPERSTRIP, TIFFDefaultStripSize(out, 1));
-                    if (description)
+                    if(out)
                         {
-                            TIFFSetField (out, TIFFTAG_IMAGEDESCRIPTION, description);
-                        }
-                    else
-                        {
-                            TIFFSetField (out, TIFFTAG_IMAGEDESCRIPTION, "");
-                        }
+                            TIFFSetField (out, TIFFTAG_IMAGEWIDTH, image->width*2);  // set the width of the image
+                            TIFFSetField(out, TIFFTAG_IMAGELENGTH, image->height);    // set the height of the image
+                            TIFFSetField(out, TIFFTAG_SAMPLESPERPIXEL, 1);   // set number of channels per pixel
+                            TIFFSetField(out, TIFFTAG_BITSPERSAMPLE, 16);    // set the size of the channels
+                            TIFFSetField(out, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);    // set the origin of the image.
+                            //   Some other essential fields to set that you do not have to understand for now.
+                            TIFFSetField(out, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
+                            TIFFSetField(out, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
+                            TIFFSetField(out, TIFFTAG_COMPRESSION, COMPRESSION_NONE);
 
-                    buf = (unsigned char *)stereoImage.datastart;
-                    for (size_t i=0; i< image->height ;i++)
-                        {
-                            if (!TIFFWriteScanline (out, buf, i, 0))
+
+
+                            tsize_t linebytes =  theImageWidthBytes;     // length in memory of one row of pixel in the image.
+                            unsigned char *buf = NULL;        // buffer used to store the row of pixel information for writing to file
+
+
+                            // We set the strip size of the file to be size of one row of pixels
+                            TIFFSetField(out, TIFFTAG_ROWSPERSTRIP, TIFFDefaultStripSize(out, 1));
+                            if (description)
                                 {
-                                    printf ("error writing TIFF buffer to disk");
-                                    break;
+                                    TIFFSetField (out, TIFFTAG_IMAGEDESCRIPTION, description);
                                 }
                             else
-                                buf += theImageWidthBytes;
+                                {
+                                    TIFFSetField (out, TIFFTAG_IMAGEDESCRIPTION, "");
+                                }
+
+                            buf = (unsigned char *)stereoImage.datastart;
+                            for (size_t i=0; i< image->height ;i++)
+                                {
+                                    if (!TIFFWriteScanline (out, buf, i, 0))
+                                        {
+                                            printf ("error writing TIFF buffer to disk");
+                                            break;
+                                        }
+                                    else
+                                        buf += theImageWidthBytes;
+                                }
+                            (void) TIFFClose(out);
+                            char noCommaDescription[1024];
+                            int len = snprintf(noCommaDescription,1024, "%s %.6f,%.6f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.5f,%.2f,%.5f,%d,%d,%d,%d,%.4f,%.4f,%.2f",imageTimeString,theStereoEvent.latitude, theStereoEvent.longitude,theStereoEvent.heading,theStereoEvent.pitch,
+                                theStereoEvent.roll, theStereoEvent.altitude0,theStereoEvent.altitude1,theStereoEvent.depth,theStereoEvent.salinity, theStereoEvent.temperature, theStereoEvent.dO,
+                                theStereoEvent.cdom, theStereoEvent.fluor, theStereoEvent.scatter, theStereoEvent.therm,theStereoEvent.ph1, theStereoEvent.ph2,theStereoEvent.fathometer);
+                            //msg_send(LOGGING_THREAD, ANY_THREAD, LOG,len,noCommaDescription);
+                            if(tenMinuteLogFile && makeTenMinuteLogFiles)
+                                {
+                                    fprintf(tenMinuteLogFile,"%s\n",noCommaDescription);
+                                    fflush(tenMinuteLogFile);
+                                }
+
                         }
-                    (void) TIFFClose(out);
 
 
                     // here's the image description that was in the old code
@@ -400,26 +426,8 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                              snprintf(description,1024, "lat=%.6f,lon=%.6f,hdg=%.2f,pitch=%.2f,roll=%.2f,alt0=%.2f,alt1=%.2f,depth=%.2f,c=%.5f,t=%.2f,O2=%.5f,cdom=%d,fluor=%d,scatter=%d,therm=%d,ph1=%.4f,ph2=%.4f,fath=%.2f",theStereoEvent.latitude, theStereoEvent.longitude,theStereoEvent.heading,theStereoEvent.pitch,
                                      theStereoEvent.roll, theStereoEvent.altitude0,theStereoEvent.altitude1,theStereoEvent.depth,theStereoEvent.conductivity, theStereoEvent.temperature, theStereoEvent.dO,
                                      theStereoEvent.cdom, theStereoEvent.fluor, theStereoEvent.scatter, theStereoEvent.therm,theStereoEvent.ph1, theStereoEvent.ph2, theStereoEvent.fathometer);*/
-                    /*
-                     * */
+
                    // stereoWriteResult = cv::imwrite(imageName,stereoImage,tags);
-
-                    if(stereoWriteResult)
-                        {
-                            /*char noCommaDescription[1024];
-                            int len = snprintf(noCommaDescription,1024, "%s %.6f,%.6f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.5f,%.2f,%.5f,%d,%d,%d,%d,%.4f,%.4f,%.2f",imageTimeString,theStereoEvent.latitude, theStereoEvent.longitude,theStereoEvent.heading,theStereoEvent.pitch,
-                                theStereoEvent.roll, theStereoEvent.altitude0,theStereoEvent.altitude1,theStereoEvent.depth,theStereoEvent.salinity, theStereoEvent.temperature, theStereoEvent.dO,
-                                theStereoEvent.cdom, theStereoEvent.fluor, theStereoEvent.scatter, theStereoEvent.therm,theStereoEvent.ph1, theStereoEvent.ph2,theStereoEvent.fathometer);
-                            msg_send(LOGGING_THREAD, ANY_THREAD, LOG,len,noCommaDescription);
-                            if(tenMinuteLogFile)
-                                {
-                                    fprintf(tenMinuteLogFile,"%s\n",noCommaDescription);
-                                    fflush(tenMinuteLogFile);
-                                }
-                        */
-
-                        }
-
 
                 }
 
@@ -494,14 +502,18 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                     if (stat(theJPGDataDir, &sb) != 0)
                         {
                             /* path does not exist - create directory */
-                            if (mkdir_p(theJPGDataDir, ACCESSPERMS) < 0)
+                            int directoryRetCode = mkdir_p(theJPGDataDir,ACCESSPERMS);
+                            if (directoryRetCode < 0)
                                 {
-                                    printf("error creating directory %s\n,theDataDir");
+                                    printf("error creating directory %s\n,theJPGDataDir");
+                                }
+                            else
+                                {
+                                    int logLen = snprintf(loggingRecord,2047,"SYS %04d/%02d/%02d %02d:%02d:%02d.%03d MKDIR %s RETCODE %d",year,month+1,day,hour,minute,gmtime_time.tm_sec,ftime_time.millitm,theJPGDataDir,directoryRetCode);
+                                    msg_send(LOGGING_THREAD, ANY_THREAD, LOG,logLen,loggingRecord);
                                 }
                         }
-                    //int directoryRetCode = mkdir_p(theDataDir,ACCESSPERMS);
-                    char dataFileName[512];
-                    snprintf(dataFileName,511,"%s/%04d%02d%02d_%02d%02d.img",theJPGDataDir,year,month+1,day,hour,trialTenMinute);
+
                 }
             char jpgPrefix[512];
             char jpgImageName[768];
@@ -641,7 +653,7 @@ void *stereoLoggingThread (void *)
     theStereoEvent.imageState = 3;
 
 
-
+    makeTenMinuteLogFiles = false;
 
     // wakeup message
     printf ("LOGGING_THREAD (thread %d) initialized \n", LOGGING_THREAD);
@@ -698,6 +710,7 @@ void *stereoLoggingThread (void *)
                         }
 
                 }
+            makeTenMinuteLogFiles = (bool)iniFile->readInt("GENERAL","MAKE_TEN_MINUTE_LOG_FILES",0);
 
 
             recordingPrefix = iniFile->readString("GENERAL","IMAGE_PREFIX","HAB");

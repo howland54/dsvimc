@@ -25,45 +25,29 @@
 #include "../../dsvimlib/include/imageA2b.h"
 #include "../../dsvimlib/include/convert.h"
 #include "../../dsvimlib/include/IniFile.h"
+#include "microstrain.h"
 
 
 char    *altimeterChannelName;
 char    *ctdChannelName;
 char    *gpsChannelName;
 char    *fathometerChannelName;
+char    *attitudeChannelName;
+
+double  headingOffset;
+double fathometerMultiplier;
+double fathometerBias;
 
 #include "sensorThread.h"	/* sensor thread */
-extern thread_table_entry_t global_thread_table[MAX_NUMBER_OF_THREADS];
 
 extern lcm::LCM myLcm;
 
 // ----------------------------------------------------------------------
 // sensor data structure
 // ----------------------------------------------------------------------
-static sensor_t sensor = { PTHREAD_MUTEX_INITIALIZER, 0 };
-
-// void *global_sensor = (void *) &sensor;
+static sensor_t sensor = { 0 };
 
 launched_timer_data_t * update_timer = NULL;
-
-
-
-/* ----------------------------------------------------------------------
-   Function to get sensor data
-
-   ---------------------------------------------------------------------- */
-void sensor_thread_get_data (sensor_t * data)
-{
-
-    // get a copy of the sensor data structure
-    pthread_mutex_lock(&sensor.mutex);
-
-    *data = sensor;
-
-    pthread_mutex_unlock(&sensor.mutex);
-
-}
-
 
 
 /* =====================================================================
@@ -73,7 +57,7 @@ static void
 process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
 {
 
-    sensor->msgs_received++;
+    char loggingRecord[2048];
     switch (in_hdr->type)
         {
         case PNG:			/* respond to ping request */
@@ -97,13 +81,67 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
 
                 break;
             }
+        case MSD:  // received a complete microstrain string in the ms net thread
+            {
+                char dateString[256];
+                micro_strain_t *theMicrostrain = (micro_strain_t  *) in_data;
+                marine_sensor::MarineSensorAttitudeSensor_t  myAttitude;
+                rov_sprintf_dsl_time_string(dateString);
+                double rawHeading = theMicrostrain->raw_state.pos[DOF_HDG];
+                double cookedHeading = rawHeading - headingOffset;
+                double cookedPitch, cookedRoll;
+                if(cookedHeading < 0.0)
+                    {
+                        cookedHeading += 360.0;
+                    }
+                if(headingOffset < 10.0)
+                    {
+                        cookedPitch =  theMicrostrain->raw_state.pos[DOF_PITCH] ;
+                        cookedRoll = theMicrostrain->raw_state.pos[DOF_ROLL];
+                    }
+                else if(headingOffset  > 350.0)
+                    {
+                        cookedPitch =  theMicrostrain->raw_state.pos[DOF_PITCH] ;
+                        cookedRoll = theMicrostrain->raw_state.pos[DOF_ROLL];
+                    }
+                else if((headingOffset > 80.0) && (headingOffset <100.0))
+                    {
+                        cookedPitch =  theMicrostrain->raw_state.pos[DOF_ROLL] ;
+                        cookedRoll = theMicrostrain->raw_state.pos[DOF_PITCH];
+                    }
+                else if((headingOffset > 170.0) && (headingOffset <190.0))
+                    {
+                        cookedPitch =  -theMicrostrain->raw_state.pos[DOF_PITCH] ;
+                        cookedRoll = -theMicrostrain->raw_state.pos[DOF_ROLL];
+                    }
+                else if((headingOffset > 260.0) && (headingOffset <280.0))
+                    {
+                        cookedPitch =  theMicrostrain->raw_state.pos[DOF_ROLL] ;
+                        cookedRoll = -theMicrostrain->raw_state.pos[DOF_PITCH];
+                    }
+                myAttitude.heading = cookedHeading;
+                myAttitude.pitch = cookedPitch;
+                myAttitude.roll = cookedRoll;
+                myAttitude.utime = theMicrostrain->most_recent_string_time;
+                int success = myLcm.publish(attitudeChannelName,&myAttitude);
+                int logLen = snprintf(loggingRecord,2047,"ATT %s HABCAM %0.2f %0.2f %0.2f", dateString, cookedHeading, cookedPitch, cookedRoll);
+                if(logLen)
+                    {
+                        msg_send(LOGGING_THREAD, ANY_THREAD, LOG,logLen,loggingRecord);
+                    }
+                break;
+            }
         case SAS:
             {
+                char dateString[256];
+                int logLen = 0;
                 switch (in_hdr->from)
                     {
                     case CTD_THREAD:
                         {
                             double   c,t,p,s,ss;
+
+                            rov_sprintf_dsl_time_string(dateString);
                             int items = sscanf( in_data, "%lf,%lf,%lf,%lf,%lf",&t,&c,&p,&s,&ss);
                             if(5 == items)
                                 {
@@ -113,6 +151,7 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
                                     sensor->ctd.depth = p*PRESSURE_TO_DEPTH;
                                     sensor->ctd.salinity = s;
                                     sensor->ctd.sound_velocity= ss;
+                                    logLen = snprintf(loggingRecord,2047,"CTD %s HABCAM %0.5f %0.3f %0.2f %0.2f %0.3f %0.5f", dateString,c,t,sensor->ctd.depth,p,s,ss);
                                 }
                             else if(4 == items)
                                 {
@@ -122,6 +161,7 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
                                     sensor->ctd.depth = p*PRESSURE_TO_DEPTH;
                                     sensor->ctd.salinity = s;
                                     sensor->ctd.sound_velocity = UNKNOWN_SOUND_SPEED;
+                                    logLen = snprintf(loggingRecord,2047,"CTD %s HABCAM %0.5f %0.3f %0.2f %0.2f %0.3f %0.5f", dateString,c,t,sensor->ctd.depth,p,s);
                                 }
                             else if(3 == items)
                                 { // this is a seabird CTD
@@ -131,6 +171,7 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
                                     sensor->ctd.depth = p*PRESSURE_TO_DEPTH;
                                     sensor->ctd.sound_velocity = UNKNOWN_SOUND_SPEED;
                                     sensor->ctd.salinity = UNKNOWN_SALINITY;
+                                    logLen = snprintf(loggingRecord,2047,"CTD %s HABCAM %0.5f %0.3f %0.2f %0.2f %0.3f", dateString,c,t,sensor->ctd.depth,p,s,ss);
                                 }
                             else
                                 {
@@ -143,17 +184,25 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
                             myCtd.sea_water_temperature = t;
                             myCtd.sea_water_salinity = sensor->ctd.salinity;
                             int success = myLcm.publish(ctdChannelName,&myCtd);
+
+                            if(logLen)
+                                {
+                                    msg_send(LOGGING_THREAD, ANY_THREAD, LOG,logLen,loggingRecord);
+                                }
+
                             break;
                         }
                     case FATHOMETER_THREAD:
                     case GPS_THREAD:
                         {
                             char  command[MAX_MESSAGE_LENGTH];
+                            int logLen = 0;
                             int items = sscanf(in_data,"%s", command);
                             if(!items)
                                 {
                                     break;
                                 }
+                            rov_sprintf_dsl_time_string(dateString);
                             if(!strncmp(command, "$GPGGA",6))
                                 {
                                     int ignoreGPSChecksum = FALSE;
@@ -166,6 +215,7 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
                                             marine_sensor::MarineSensorGPS_t myGPS;
                                             myGPS.latitude = sensor->vesselPosition.latitude;
                                             myGPS.longitude = sensor->vesselPosition.longitude;
+                                            logLen = snprintf(loggingRecord,2047,"GPS %s HABCAM %0.6f %0.6f", dateString,sensor->vesselPosition.latitude,sensor->vesselPosition.longitude);
                                             int success = myLcm.publish(gpsChannelName,&myGPS);
                                         }
 
@@ -180,6 +230,7 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
                                             marine_sensor::MarineSensorGPS_t myGPS;
                                             myGPS.latitude = sensor->vesselPosition.latitude;
                                             myGPS.longitude = sensor->vesselPosition.longitude;
+                                            logLen = snprintf(loggingRecord,2047,"GPS %s HABCAM %0.6f %0.6f", dateString,sensor->vesselPosition.latitude,sensor->vesselPosition.longitude);
                                             int success = myLcm.publish(gpsChannelName,&myGPS);
                                         }
 
@@ -210,18 +261,25 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
                                     int items = sscanf( in_data, "$SDDBT,%lf,f,",&myWaterDepth);
                                     if(items)
                                         {
-                                            sensor->fathometer.pos = myWaterDepth * sensor->fathometerMultiplier;
+                                            sensor->fathometer.pos = myWaterDepth * fathometerMultiplier + fathometerBias;
                                             marine_sensor::MarineSensorFathometer_t myFathometer;
                                             myFathometer.depth = sensor->fathometer.pos;
+                                            logLen = snprintf(loggingRecord,2047,"FATH %s HABCAM %0.2f", dateString,myFathometer.depth);
                                             int success = myLcm.publish(fathometerChannelName,&myFathometer);
                                         }
+                                }
+                            if(logLen)
+                                {
+                                    msg_send(LOGGING_THREAD, ANY_THREAD, LOG,logLen,loggingRecord);
                                 }
 
                             break;
                         }
+
                     case ALTIMETER_THREAD:
                         {
                             double	altimeterTemp,range;
+                            rov_sprintf_dsl_time_string(dateString);
                             int items = sscanf( in_data, "T%lf R%lf",&altimeterTemp,&range);
                             if(2 == items)
                                 {
@@ -241,7 +299,12 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
                                     marine_sensor::marineSensorAltimeter_t myAltimeter;
                                     myAltimeter.altitude = range;
                                     int success = myLcm.publish(altimeterChannelName,&myAltimeter);
+                                    logLen = snprintf(loggingRecord,2047,"ALT %s HABCAM %0.3f ", dateString,myAltimeter.altitude);
 
+                                }
+                            if(logLen)
+                                {
+                                    msg_send(LOGGING_THREAD, ANY_THREAD, LOG,logLen,loggingRecord);
                                 }
                             break;
                         }
@@ -271,12 +334,7 @@ Sensor Thread
 
 Modification History:
 DATE         AUTHOR  COMMENT
-23-JUL-2000  LLW      Created and written.
-18 Jan 2002  LLW     Added mutex status flags to sensor.cpp, control.cpp, rov.cpp 
-to help debug possible mutex problem
-18 Jan 2002  LLW     Added mutex status flags to sensor.cpp, control.cpp, rov.cpp 
-to help debug possible mutex problem
-
+01-Apr-2023  jch      modified from sensor thread in rov code
 ---------------------------------------------------------------------- */
 
 
@@ -305,15 +363,20 @@ void *sensorThread (void *)
     bool stereoLogging;
     if(GOOD_INI_FILE_READ == okINI)
         {
-            double rollOffset, pitchOffset, headingOffset;
-            rollOffset =    iniFile->readDouble("MICROSTRAIN","ROLL", DEFAULT_MICROSTRAIN_ROLL_OFFSET);
-            pitchOffset =   iniFile->readDouble( "MICROSTRAIN","PITCH",DEFAULT_MICROSTRAIN_PITCH_OFFSET);
-            headingOffset = iniFile->readDouble( "MICROSTRAIN","HEADING",DEFAULT_MICROSTRAIN_HDG_OFFSET);
+
+            headingOffset = iniFile->readDouble( "MICROSTRAIN","HEADING_ROTATION",DEFAULT_MICROSTRAIN_HDG_OFFSET);
+            if(headingOffset < 0.0)
+                {
+                    headingOffset += 360.0;
+                }
 
             altimeterChannelName = iniFile->readString("ALTIMETER","CHANNEL_NAME", "ALTIMETER");
             ctdChannelName = iniFile->readString("CTD","CHANNEL_NAME","CTD");
             gpsChannelName = iniFile->readString("GPS","CHANNEL_NAME","GPS");
             fathometerChannelName = iniFile->readString("FATHOMETER","CHANNEL_NAME","FATHOMETER");
+            attitudeChannelName = iniFile->readString("MICROSTRAIN","CHANNEL_NAME","ATTITUDE");
+            fathometerMultiplier = iniFile->readDouble("FATHOMETER", "MULTIPLIER", 1.0);
+            fathometerBias = iniFile->readDouble("FATHOMETER", "FATHOMETER_BIAS", 0.0);
             iniFile->closeIni();
         }
     else
@@ -346,14 +409,10 @@ void *sensorThread (void *)
                     printf ("SENSOR got msg type %d from proc %d to proc %d, %d bytes data\n", in_hdr.type, in_hdr.from, in_hdr.to, in_hdr.length);
 #endif
 
-                    // lock the mutex
-                    pthread_mutex_lock (&sensor.mutex);
 
                     // process the message
                     process_net_msg (&sensor, &in_hdr, (char *) in_data);
 
-                    // unlock the mutex
-                    pthread_mutex_unlock (&sensor.mutex);
 
 
                 }// end else
