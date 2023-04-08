@@ -101,6 +101,12 @@ cv::Mat  leftNormalizedImage;
 cv::Mat  rightNormalizedImage;
 cv::Mat dst;
 
+char    *altimeterStereoChannelName;
+char    *ctdStereoChannelName;
+char    *gpsStereoChannelName;
+char    *fathometerStereoChannelName;
+char    *attitudeStereoChannelName;
+
 
 char *recordingPrefix;
 
@@ -119,6 +125,35 @@ void recordingParameterCallback(const lcm::ReceiveBuffer *rbuf, const std::strin
         }
 }
 
+void gpsCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,const marine_sensor::MarineSensorGPS_t  *myGPS, State *user )
+{
+    theStereoEvent.latitude = myGPS->latitude;
+    theStereoEvent.longitude = myGPS->longitude;
+}
+
+void ctdCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,const marine_sensor::MarineSensorCtd_t *myCTD, State *user )
+{
+    theStereoEvent.conductivity = myCTD->sea_water_electrical_conductivity;
+    theStereoEvent.depth= myCTD->depth;
+    theStereoEvent.temperature = myCTD->sea_water_temperature;
+}
+
+void fathometerCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,const marine_sensor::MarineSensorFathometer_t  *myFathometer, State *user )
+{
+    theStereoEvent.fathometer = myFathometer->depth;
+}
+
+void altimeterCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,const marine_sensor::marineSensorAltimeter_t  *myAlt, State *user )
+{
+    theStereoEvent.altitude0 = myAlt->altitude;
+}
+void attitudeCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,const marine_sensor::MarineSensorAttitudeSensor_t  *myAtt, State *user )
+{
+    theStereoEvent.heading = myAtt->heading;
+    theStereoEvent.pitch = myAtt->pitch;
+    theStereoEvent.roll = myAtt->roll;
+}
+
 void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,const image::image_t *image, State *user)
 {
 
@@ -127,6 +162,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
     bool needANewJPGDirectory = false;
     char theDataDir[512];
     char theJPGDataDir[512];
+    char description[1024];
 
     theStereoEvent.imageState = 0;
     image::image_t leftImageToPublish;
@@ -304,12 +340,69 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                     //  cv::destroyWindow("right");
 
 
+                    snprintf(description,1024, "lat=%.6f,lon=%.6f,hdg=%.2f,pitch=%.2f,roll=%.2f,alt0=%.2f,alt1=%.2f,depth=%.2f,c=%.5f,t=%.2f,O2=%.5f,cdom=%d,fluor=%d,scatter=%d,therm=%d,ph1=%.4f,ph2=%.4f,fath=%.2f",theStereoEvent.latitude, theStereoEvent.longitude,theStereoEvent.heading,theStereoEvent.pitch,
+                             theStereoEvent.roll, theStereoEvent.altitude0,theStereoEvent.altitude1,theStereoEvent.depth,theStereoEvent.conductivity, theStereoEvent.temperature, theStereoEvent.dO,
+                             theStereoEvent.cdom, theStereoEvent.fluor, theStereoEvent.scatter, theStereoEvent.therm,theStereoEvent.ph1, theStereoEvent.ph2, theStereoEvent.fathometer);
+                    //Now writing image to the file one strip at a timeif (description)
+
+
                     int numChars = makeTimeString(thePairTime,imageTimeString,recordingPrefix, "tif");
                     cv::Mat stereoImage = cv::Mat(image->height, image->width*2, CV_16UC1);
                     cv::hconcat(leftImage,rightImage,stereoImage);
                     snprintf(imageName,767,"%s/%s",theDataDir,imageTimeString);
-                    tags = {TIFFTAG_COMPRESSION, COMPRESSION_NONE};
-                    stereoWriteResult = cv::imwrite(imageName,stereoImage,tags);
+                    int theImageWidthBytes = image->width * 4;
+
+                    TIFF *out= TIFFOpen(imageName, "w");
+                    TIFFSetField (out, TIFFTAG_IMAGEWIDTH, image->width*2);  // set the width of the image
+                    TIFFSetField(out, TIFFTAG_IMAGELENGTH, image->height);    // set the height of the image
+                    TIFFSetField(out, TIFFTAG_SAMPLESPERPIXEL, 1);   // set number of channels per pixel
+                    TIFFSetField(out, TIFFTAG_BITSPERSAMPLE, 16);    // set the size of the channels
+                    TIFFSetField(out, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);    // set the origin of the image.
+                    //   Some other essential fields to set that you do not have to understand for now.
+                    TIFFSetField(out, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
+                    TIFFSetField(out, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
+                    TIFFSetField(out, TIFFTAG_COMPRESSION, COMPRESSION_NONE);
+
+
+
+                    tsize_t linebytes =  theImageWidthBytes;     // length in memory of one row of pixel in the image.
+                    unsigned char *buf = NULL;        // buffer used to store the row of pixel information for writing to file
+
+
+                    // We set the strip size of the file to be size of one row of pixels
+                    TIFFSetField(out, TIFFTAG_ROWSPERSTRIP, TIFFDefaultStripSize(out, 1));
+                    if (description)
+                        {
+                            TIFFSetField (out, TIFFTAG_IMAGEDESCRIPTION, description);
+                        }
+                    else
+                        {
+                            TIFFSetField (out, TIFFTAG_IMAGEDESCRIPTION, "");
+                        }
+
+                    buf = (unsigned char *)stereoImage.datastart;
+                    for (size_t i=0; i< image->height ;i++)
+                        {
+                            if (!TIFFWriteScanline (out, buf, i, 0))
+                                {
+                                    printf ("error writing TIFF buffer to disk");
+                                    break;
+                                }
+                            else
+                                buf += theImageWidthBytes;
+                        }
+                    (void) TIFFClose(out);
+
+
+                    // here's the image description that was in the old code
+
+                    /*char description[1024];
+                             snprintf(description,1024, "lat=%.6f,lon=%.6f,hdg=%.2f,pitch=%.2f,roll=%.2f,alt0=%.2f,alt1=%.2f,depth=%.2f,c=%.5f,t=%.2f,O2=%.5f,cdom=%d,fluor=%d,scatter=%d,therm=%d,ph1=%.4f,ph2=%.4f,fath=%.2f",theStereoEvent.latitude, theStereoEvent.longitude,theStereoEvent.heading,theStereoEvent.pitch,
+                                     theStereoEvent.roll, theStereoEvent.altitude0,theStereoEvent.altitude1,theStereoEvent.depth,theStereoEvent.conductivity, theStereoEvent.temperature, theStereoEvent.dO,
+                                     theStereoEvent.cdom, theStereoEvent.fluor, theStereoEvent.scatter, theStereoEvent.therm,theStereoEvent.ph1, theStereoEvent.ph2, theStereoEvent.fathometer);*/
+                    /*
+                     * */
+                   // stereoWriteResult = cv::imwrite(imageName,stereoImage,tags);
 
                     if(stereoWriteResult)
                         {
@@ -434,7 +527,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                     Exiv2::Image::AutoPtr image = Exiv2::ImageFactory::open(jpgImageName);
                     image->readMetadata();
                     Exiv2::ExifData &exifData = image->exifData();
-                    exifData["Exif.Image.ImageDescription"] = "An ASCII Exif description added with Exiv2";
+                    exifData["Exif.Image.ImageDescription"] = description;
                     image->writeMetadata();
                 }
         }
@@ -527,33 +620,27 @@ void *stereoLoggingThread (void *)
     rightTime = 0;
     stereoPairCount = 0;
     amIStereoRecording  = true;
-    theStereoEvent.dO = 0.012;
-    theStereoEvent.ph1 = 0.123;
-    theStereoEvent.ph2 = 0.234;
-    theStereoEvent.cdom = 345;
+    theStereoEvent.dO = 99.99;
+    theStereoEvent.ph1 = 99.99;
+    theStereoEvent.ph2 = 99.99;
+    theStereoEvent.cdom = 99.99;
     theStereoEvent.roll = 0.456;
     theStereoEvent.depth = 0.567;
-    theStereoEvent.fluor = 678;
+    theStereoEvent.fluor = 99.99;
     theStereoEvent.pitch = 0.789;
-    theStereoEvent.therm = 89;
+    theStereoEvent.therm = 99.99;
     theStereoEvent.heading = 0.901;
-    theStereoEvent.scatter = 987;
+    theStereoEvent.scatter = 99.99;
     theStereoEvent.latitude = -99.99;
     theStereoEvent.salinity = 0.876;
     theStereoEvent.altitude0 = 0.765;
-    theStereoEvent.altitude1 = 0.654;
+    theStereoEvent.altitude1 = 99.99;
     theStereoEvent.longitude = -999.0;
     theStereoEvent.temperature = 0.543;
     theStereoEvent.conductivity = 0.432;
     theStereoEvent.imageState = 3;
 
 
-    for(int cameraNumber = 0; cameraNumber < nOfAvtCameras; cameraNumber++)
-        {
-            stereoLcm.subscribeFunction(avtCameras[cameraNumber].lcmChannelName, &stereoCallback, &state);
-        }
-    // now subscribe to some control data
-    stereoLcm.subscribeFunction("COMMAND_PARAMETERS", &recordingParameterCallback, &state);
 
 
     // wakeup message
@@ -571,6 +658,11 @@ void *stereoLoggingThread (void *)
         }
     else
         {
+            altimeterStereoChannelName = iniFile->readString("ALTIMETER","CHANNEL_NAME", "ALTIMETER");
+            ctdStereoChannelName = iniFile->readString("CTD","CHANNEL_NAME","CTD");
+            gpsStereoChannelName = iniFile->readString("GPS","CHANNEL_NAME","GPS");
+            fathometerStereoChannelName = iniFile->readString("FATHOMETER","CHANNEL_NAME","FATHOMETER");
+            attitudeStereoChannelName = iniFile->readString("MICROSTRAIN","CHANNEL_NAME","ATTITUDE");
             leftCameraID = iniFile->readInt("GENERAL", "LEFT_CAMERA_ID",1);
             if((leftCameraID <= 0) || (leftCameraID > nOfAvtCameras))
                 {
@@ -650,6 +742,18 @@ void *stereoLoggingThread (void *)
             iniFile->closeIni();
 
         }
+    for(int cameraNumber = 0; cameraNumber < nOfAvtCameras; cameraNumber++)
+        {
+            stereoLcm.subscribeFunction(avtCameras[cameraNumber].lcmChannelName, &stereoCallback, &state);
+        }
+    // now subscribe to some control data
+    stereoLcm.subscribeFunction("COMMAND_PARAMETERS", &recordingParameterCallback, &state);
+    stereoLcm.subscribeFunction(gpsStereoChannelName, gpsCallback, &state);
+    stereoLcm.subscribeFunction(ctdStereoChannelName, ctdCallback, &state);
+    stereoLcm.subscribeFunction(altimeterStereoChannelName, altimeterCallback, &state);
+    stereoLcm.subscribeFunction(fathometerStereoChannelName, fathometerCallback, &state);
+    stereoLcm.subscribeFunction(attitudeStereoChannelName, attitudeCallback, &state);
+
 
 
     // loop forever

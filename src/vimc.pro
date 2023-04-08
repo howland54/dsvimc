@@ -60,6 +60,7 @@ LIBS += -lopencv_imgcodecs
 LIBS += -lopencv_imgproc
 LIBS += -lopencv_videoio
 LIBS += -lexiv2
+LIBS += -ltiff
 }
 
 SOURCES += \

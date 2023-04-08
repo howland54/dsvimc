@@ -224,6 +224,7 @@ void *simulationThread (void *)
     double lonNoise = 0.002;
     double latNoise = 0.0025;
     double fathometerNoise = 0.9;
+    double conductivityNoise = 0.003;
     double defaultConductivity = 0.0034567;
 
 
@@ -261,13 +262,14 @@ void *simulationThread (void *)
                             {
                                 double depthBias = (((double)rand() / RAND_MAX) - 0.5) * depthNoise;
                                 double tBias = (((double)rand() / RAND_MAX) - 0.5) * tNoise;
+                                double conductivityBias = (((double)rand() / RAND_MAX) - 0.5) * conductivityNoise;
                                 rov_time_t ctdTime = rov_get_time();
                                 marine_sensor::MarineSensorCtd_t myCtd;
                                 myCtd.depth = simDepth + depthBias;
-                                myCtd.sea_water_electrical_conductivity = UNKNOWN_SALINITY;
+                                myCtd.sea_water_electrical_conductivity = defaultConductivity + conductivityBias;
                                 myCtd.sea_water_pressure = myCtd.depth/PRESSURE_TO_DEPTH;
                                 myCtd.sea_water_temperature = simT + tBias;
-                                myCtd.sea_water_salinity = defaultConductivity;
+                                myCtd.sea_water_salinity = UNKNOWN_SALINITY;
 
                                 int success = myLcm.publish(ctdChannelName,&myCtd);
                                 break;
