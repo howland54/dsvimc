@@ -5,6 +5,8 @@
    Modification History:
    DATE        AUTHOR   COMMENT
    13-Apr-217  jch      creation, derive from jason crossbow prompt thread
+   2018        jch      modify for use with vimba/allied vision cameras
+
    ---------------------------------------------------------------------- */
 
 #ifndef FLY_THREAD_INC

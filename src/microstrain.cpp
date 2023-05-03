@@ -1,8 +1,6 @@
 /* ----------------------------------------------------------------------
 
-Octans interface library
-
-This program copyright (c) 2001 Louis L. Whitcomb
+microstrain interface library
 
 MODIFICATION HISTORY
 DATE         WHO             WHAT
@@ -12,6 +10,7 @@ DATE         WHO             WHAT
 2007 10 30   LLW             HACK change sign on microstrain ROLL and PITCH as a quick and dirty for Nereus
 2007 10 30 LLW HACK add 180 degrees to microstrain heading
 2007 11 16 LLW HACK removed
+2023 -4 23 jch  modify for habcam
 
 ---------------------------------------------------------------------- */
 #include <stdio.h>
@@ -95,26 +94,6 @@ int calcChecksum( char* buffer, int length) {
       }
    return(checkSum & CHECKSUM_MASK);
 }
-
-/* -----------------------------------------------------------------------
-
-PARSE INCOMING MICROSTRAIN STRINGS
-
-MODIFICATION HISTORY
-DATE         WHO             WHAT
------------  --------------  ----------------------------
-2007/02/05   SCM             MICROSTRAIN PARSING COMMAND
----------------------------------------------------------------------- */
-void log_microstrain_ascii_string(micro_strain_t * microstrain)
-{
-
-
-
-}
-
-
-
-
 
 
 /* -----------------------------------------------------------------------
@@ -574,7 +553,7 @@ int microstrain_parse_binary_string(micro_strain_t * microstrain, char * ustr, i
 
       }
 
-   //  log_microstrain_ascii_string(microstrain);
+   
    return MICROSTRAIN_STRING_OK;
 }
 

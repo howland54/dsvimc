@@ -21,13 +21,6 @@
 // DEBUG FLAG:  Uncomment these and recompile to get verbose debugging 
 // ----------------------------------------------------------------------
 //#define DEBUG_SENSOR
-//#define DEBUG_ALTIMETER
-//#define DEBUG_SBE_37
-//#define DEBUG_PAROSCIENTIFIC
-//#define DEBUG_HONEYWELL_MAG
-//#define DEBUG_DVLNAV
-//#define DEBUG_SENSOR_INI
-//#define DEBUG_TCM2
 
 // ----------------------------------------------------------------------
 
@@ -94,7 +87,8 @@ gps_t;
    =================================================================== */
 
 
-/* a structure for scientific unit sensor readings */
+/* a structure for scientific unit sensor readings
+   not used very much if at all*/
 typedef struct
 {
 
@@ -103,9 +97,6 @@ typedef struct
   altimeter_t   fathometer;
   double        fathometerMultiplier;
   gps_t         vesselPosition;
-
-
-
   
 
 }

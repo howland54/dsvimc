@@ -1,4 +1,3 @@
-
 /* ----------------------------------------------------------------------
 
    header file for using nmea data 
@@ -13,7 +12,6 @@
 #ifndef NMEA_INC
 #define NMEA_INC
 #include "../../dsvimlib/include/convert.h"
-
 
 #define	PVGGA	"$LCGGA"
 #define  HEHDT	"$HEHDT"

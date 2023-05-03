@@ -69,6 +69,8 @@ FrameObserver::FrameObserver( AVT::VmbAPI::CameraPtr pCamera, int theCameraNumbe
    imageCount = 0;
    cameraNumber = theCameraNumber;
 
+   // set up some time variables so that new directories, etc will be created upon startup
+
    struct timeval tv;
    gettimeofday(&tv,NULL);
    tv.tv_sec -= 86401.0;

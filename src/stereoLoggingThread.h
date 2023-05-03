@@ -31,7 +31,6 @@
 
 #define MAX_LOGGING_LENGTH 2048
 #define INTERIMAGE_CRITERIA   80000 // microseconds
-#define DEFAULT_PNG_COMPRESSION 0
 extern void *stereoLoggingThread (void *);
 
 

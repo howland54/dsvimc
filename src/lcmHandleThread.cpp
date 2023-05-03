@@ -4,6 +4,7 @@
    Modification History:
    DATE         AUTHOR   COMMENT
    2012-06-01   SS       Created and written
+   2018-2023    jch      extensively modified and customized for use in dsvimc
    -------------------------------------------------------------------------- */
 
 #include "lcmHandleThread.h"
@@ -52,11 +53,7 @@ void parameterCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channe
                printf(" auto gain set to %0.1f\n",value);
             }
       }
-   else if("BINNING" == image->key)
-      {
-         printf(" binning to %0.1f\n",value);
-         msg_send(FLY_THREAD_BASE+ image->cameraNumber,LCM_RECEIVE_THREAD,WBIN,(sizeof(value)),&value);
-      }
+
    else if("AUTO_EXPOSURE" == image->key.substr(0,13))
       {
          double theValues[3];

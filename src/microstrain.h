@@ -2,13 +2,14 @@
 
    MICROSTRAIN interface library
 
-   This program copyright (c) 2007 Stephen Martin
+
 
    MODIFICATION HISTORY
    DATE         WHO             WHAT
    -----------  --------------  ----------------------------
    05 FEB 2007  Stephen Martin  Created and Written
    2007 10 26   LLW             Ported to linux   
+   2018         jch             modify
    ---------------------------------------------------------------------- */
 
 #ifndef MICROSTRAIN_INC
@@ -110,6 +111,6 @@ typedef struct
 extern int microstrain_parse_binary_string(micro_strain_t * microstrain, char * ustr, int len);
 extern int process_microstrain_binary_string(micro_strain_t * microstrain, char * ustr, int len);
 extern int get_microstrain_cmd_byte(char * str, char msg_type);
-extern void log_microstrain_ascii_string(micro_strain_t * microstrain);
+
 extern void log_microstrain_as_xbow_string(micro_strain_t * microstrain, char *timeString,double declination, int declination_type, int my_address);
 #endif

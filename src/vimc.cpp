@@ -5,6 +5,13 @@
     derived from the Jason2 multithreaded architecture by Jonathan Howland
     beginning on 6 april 2017
     originally written for Pt Grey cameas using the flycapture API; hence some of the references to fly
+
+    this version customized to work with habcam V 3 for the Coonamessett Faarms Foundation.  The code extends well beyond
+    camera control and capture; it also includes logging and inclusion of sensor metadata
+
+    Jonathan Howland
+    April, 2023
+
     ---------------------------------------------------------------------- */
 
 /* standard ansi C header files */
@@ -43,7 +50,7 @@
 
 //----------------------------------------------------------------
 //  this is the filename which is read as the argument to the main
-//  program and stored as a double so everyvody can read it
+//  program and stored as a string so everyvody can read it
 //----------------------------------------------------------------
 
 char *flyIniFile;
@@ -62,7 +69,6 @@ bool    thisIsASimulation;
 
 lcm::LCM myLcm("udpm://239.255.76.67:7667?ttl=0");
 
-//lcm::LCM myLcm;
 
 // ----------------------------------------------------------------------
 // This is a structure that is initialized in rov.cpp to contain
@@ -76,13 +82,12 @@ pthread_attr_t DEFAULT_ROV_THREAD_ATTR;
 // channels used in the entire system.  
 // Each channel pair connects a single thread to the router.
 // the router itself is process 0.
-// This array is initialized in rov.cpp
 // ----------------------------------------------------------------------
 
 
 // the global thread table
 
-//thread_table_entry_t global_thread_table[MAX_NUMBER_OF_THREADS];
+thread_table_entry_t global_thread_table[MAX_NUMBER_OF_THREADS];
 
 
 #define ROV_THREAD_DEFAULT_STACKSIZE 2000000
@@ -123,7 +128,7 @@ main (int argc, char *argv[])
     // set for detached threads
     pthread_attr_setdetachstate (&DEFAULT_ROV_THREAD_ATTR, PTHREAD_CREATE_DETACHED),
             // read and set the default stack size
-            pthread_attr_getstacksize (&DEFAULT_ROV_THREAD_ATTR, &size), fprintf (stderr, "Default PTHREAD stack size was %ld (0x%08lX)\n", size, size);
+    pthread_attr_getstacksize (&DEFAULT_ROV_THREAD_ATTR, &size), fprintf (stderr, "Default PTHREAD stack size was %ld (0x%08lX)\n", size, size);
 
     pthread_attr_setstacksize (&DEFAULT_ROV_THREAD_ATTR, ROV_THREAD_DEFAULT_STACKSIZE), pthread_attr_getstacksize (&DEFAULT_ROV_THREAD_ATTR, &size), fprintf (stderr, "New PTHREAD stack size was %ld (0x%08lX)\n", size, size);
 
@@ -153,10 +158,7 @@ main (int argc, char *argv[])
                 {
                     fprintf (stderr, "SIMULATING!!!!\n");
                     thisIsASimulation = true;
-
                 }
-
-
             for(int cameraNumber = 0; cameraNumber < MAX_N_OF_CAMERAS; cameraNumber++)
                 {
                     char cameraLabel[32];
@@ -188,9 +190,6 @@ main (int argc, char *argv[])
                             double theExposure = iniFile->readInt(cameraLabel,"EXPOSURE",DEFAULT_EXPOSURE);
                             avtCameras[nOfAvtCameras].desiredSettings.theShutter = theExposure;
 
-                            bool binning = (bool)iniFile->readInt(cameraLabel,"BINNING",DEFAULT_BINNING);
-                            avtCameras[nOfAvtCameras].desiredSettings.binning = binning;
-
                             char *scratch = iniFile->readString(cameraLabel,"CHANNEL_NAME",DEFAULT_CHANNEL_NAME);
                             if(!strncmp(scratch,DEFAULT_CHANNEL_NAME,15))
                                 {
@@ -198,7 +197,6 @@ main (int argc, char *argv[])
                                 }
                             avtCameras[nOfAvtCameras].lcmChannelName = strdup(scratch);
                             free(scratch);
-
 
                             scratch = iniFile->readString(cameraLabel,"CONFIG_FILE_NAME",NO_INITIAL_FILE_NAME);
                             avtCameras[nOfAvtCameras].xmlFileName = strdup(scratch);

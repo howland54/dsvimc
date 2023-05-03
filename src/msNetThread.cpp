@@ -77,8 +77,6 @@ void * msNetThread (void *thread_num)
 
    launched_timer_data_t * sync_timer = launch_timer_new(MICROSTRAIN_POLL_INTERVAL, -1, MS_NET_THREAD, MSPI);
 
-
-
    // ------------------------------------------------------------
    // wakeup message
    // ------------------------------------------------------------
@@ -201,10 +199,6 @@ void * msNetThread (void *thread_num)
                                                                MSD,
                                                                sizeof(nms),
                                                                &nms);
-
-                                                      log_microstrain_ascii_string( &nms);
-                                                      //printf("logged, %.2f\n",nms.raw_state.pos[DOF_HDG]);
-
 
                                                    }
                                                 ms_parse_sync = 0;

@@ -135,6 +135,7 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
             {
                 char dateString[256];
                 int logLen = 0;
+                rov_time_t sensorTime = rov_get_time();
                 switch (in_hdr->from)
                     {
                     case CTD_THREAD:
@@ -183,6 +184,7 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
                             myCtd.sea_water_pressure = p;
                             myCtd.sea_water_temperature = t;
                             myCtd.sea_water_salinity = sensor->ctd.salinity;
+                            myCtd.utime =(long int)( 1000.0 * sensorTime);
                             int success = myLcm.publish(ctdChannelName,&myCtd);
 
                             if(logLen)
@@ -215,6 +217,7 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
                                             marine_sensor::MarineSensorGPS_t myGPS;
                                             myGPS.latitude = sensor->vesselPosition.latitude;
                                             myGPS.longitude = sensor->vesselPosition.longitude;
+                                            myGPS.utime =(long int)( 1000.0 * sensorTime);
                                             logLen = snprintf(loggingRecord,2047,"GPS %s HABCAM %0.6f %0.6f", dateString,sensor->vesselPosition.latitude,sensor->vesselPosition.longitude);
                                             int success = myLcm.publish(gpsChannelName,&myGPS);
                                         }
@@ -230,6 +233,7 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
                                             marine_sensor::MarineSensorGPS_t myGPS;
                                             myGPS.latitude = sensor->vesselPosition.latitude;
                                             myGPS.longitude = sensor->vesselPosition.longitude;
+                                            myGPS.utime =(long int)( 1000.0 * sensorTime);
                                             logLen = snprintf(loggingRecord,2047,"GPS %s HABCAM %0.6f %0.6f", dateString,sensor->vesselPosition.latitude,sensor->vesselPosition.longitude);
                                             int success = myLcm.publish(gpsChannelName,&myGPS);
                                         }
@@ -264,6 +268,7 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
                                             sensor->fathometer.pos = myWaterDepth * fathometerMultiplier + fathometerBias;
                                             marine_sensor::MarineSensorFathometer_t myFathometer;
                                             myFathometer.depth = sensor->fathometer.pos;
+                                            myFathometer.utime =(long int)( 1000.0 * sensorTime);
                                             logLen = snprintf(loggingRecord,2047,"FATH %s HABCAM %0.2f", dateString,myFathometer.depth);
                                             int success = myLcm.publish(fathometerChannelName,&myFathometer);
                                         }
@@ -298,6 +303,7 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
                                 {
                                     marine_sensor::marineSensorAltimeter_t myAltimeter;
                                     myAltimeter.altitude = range;
+                                    myAltimeter.utime =(long int)( 1000.0 * sensorTime);
                                     int success = myLcm.publish(altimeterChannelName,&myAltimeter);
                                     logLen = snprintf(loggingRecord,2047,"ALT %s HABCAM %0.3f ", dateString,myAltimeter.altitude);
 

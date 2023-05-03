@@ -449,7 +449,7 @@ VmbErrorType setExposure(int theCameraNumber, AVT::VmbAPI::CameraPtr theAVTCamer
 
 
 /* ----------------------------------------------------------------------
-   vim Thread
+   vimc Thread
 
 
    Modification History:
@@ -470,9 +470,6 @@ void *vimcThread (void *threadNumber)
    int currentQueryType = CAMERA_SHUTTER;
    parameterQueryTypes[CAMERA_SHUTTER] = CAMERA_SHUTTER;
    parameterQueryTypes[CAMERA_GAIN] = CAMERA_GAIN;
-
-
-
 
    // wakeup message
    printf ("VIMBA_CAMERA (thread %d) initialized \n", (int)myThreadNumber);
@@ -693,14 +690,10 @@ void *vimcThread (void *threadNumber)
                   case CAMERA_QUERY:
                      {
                         image::image_parameter_t imageParameter;
-
-
                         if(MAX_N_OF_PARAMETER_QUERIES == currentQueryType)
                            {
                               currentQueryType = CAMERA_SHUTTER;
                            }
-                        
-
 
                         else if(CAMERA_SHUTTER == parameterQueryTypes[currentQueryType])
                            {

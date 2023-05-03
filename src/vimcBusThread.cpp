@@ -5,6 +5,7 @@
    Modification History:
    DATE        AUTHOR   COMMENT
    13-Apr-2017  jch      creation, derive from jason crossbow prompt thread
+          2018  jch      modify to work with vimba cameras on an ethernet
    ---------------------------------------------------------------------- */
 
 /* ansii c headers */
@@ -39,7 +40,6 @@
 extern avtCameraT  avtCameras[MAX_N_OF_CAMERAS];
 extern int   nOfAvtCameras;
 extern VimbaSystem          *vSystem;
-//FlyCapture2::BusManager busMgr;
 
 
 pthread_t   busSubThread;
