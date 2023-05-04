@@ -39,6 +39,7 @@ extern void *vimcThread (void *);
 #define NUM_FRAMES            8
 
 #define MAX_CHARACTER_COUNT   4095
+#define MAX_ITERATION_COUNT   100
 
 typedef enum {
    CAMERA_SHUTTER,

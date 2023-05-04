@@ -65,12 +65,18 @@ VmbErrorType configureCamera(avtCameraT *mycamera, AVT::VmbAPI::CameraPtr theAVT
          if( VmbErrorSuccess == SP_ACCESS( pCommandFeature )->RunCommand() )
             {
                bool bIsCommandDone = false;
+               int iterationCount = 0;
                do
                   {
+                     if(iterationCount > MAX_ITERATION_COUNT)
+                         {
+                             break;
+                         }
                      if( VmbErrorSuccess != SP_ACCESS( pCommandFeature )->IsCommandDone( bIsCommandDone ) )
                         {
                            break;
                         }
+                     iterationCount++;
                   } while( false == bIsCommandDone );
             }
       }

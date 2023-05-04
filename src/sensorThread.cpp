@@ -284,6 +284,7 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
                     case ALTIMETER_THREAD:
                         {
                             double	altimeterTemp,range;
+
                             rov_sprintf_dsl_time_string(dateString);
                             int items = sscanf( in_data, "T%lf R%lf",&altimeterTemp,&range);
                             if(2 == items)
@@ -294,9 +295,17 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
                             else
                                 {
                                     items = sscanf( in_data, "R%lf",&range);
+
                                     if(items)
                                         {
-                                            sensor->altimeter.pos = range;
+                                            if(!strncmp(in_data,"R99.99E",7))
+                                                {
+                                                    break;
+                                                }
+                                            else
+                                                {
+                                                    sensor->altimeter.pos = range;
+                                                }
                                         }
                                 }
                             if(items)

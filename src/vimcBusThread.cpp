@@ -107,7 +107,7 @@ void *busThread (void *)
    printf ("BUS_THREAD (thread %d) initialized \n", BUS_THREAD);
    printf ("BUS_THREAD File %s compiled at %s on %s\n", __FILE__, __TIME__, __DATE__);
    // sleep a little so the camera threads can be started up and be waiting for a message if a camera is already on the bus
-   usleep(700000);
+   usleep(1400000);
    int msg_success = msg_queue_new(BUS_THREAD, "fly bus thread");
 
    if(msg_success != MSG_OK)
@@ -134,7 +134,7 @@ void *busThread (void *)
          int msg_get_success = msg_get(BUS_THREAD,&hdr, data, MSG_DATA_LEN_MAX);
          if(msg_get_success != MSG_OK)
             {
-               fprintf(stderr, "fly bus thread--error on msg_get:  %s\n",MSG_ERROR_CODE_NAME(msg_get_success));
+               fprintf(stderr, "vimc bus thread--error on msg_get:  %s\n",MSG_ERROR_CODE_NAME(msg_get_success));
             }
          else
             {
