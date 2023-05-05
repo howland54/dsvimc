@@ -350,12 +350,14 @@ VmbErrorType setGain(int theCameraNumber, AVT::VmbAPI::CameraPtr theAVTCamera,do
          return VmbErrorDeviceNotOpen;
       }
    AVT::VmbAPI::FeaturePtr pGainFeature;
-   VmbErrorType res = SP_ACCESS( theAVTCamera )->GetFeatureByName( "Gain", pGainFeature );
+   VmbErrorType res = SP_ACCESS( theAVTCamera )->GetFeatureByName( "GainRaw", pGainFeature );
    if( VmbErrorSuccess != res )
       {
          return res;
       }
-   res = SP_ACCESS( pGainFeature )->SetValue (theGain );
+   // make sure the gain is an integral value (albeit contained in a double)
+   int theRoundGain = (int)round(theGain);
+   res = SP_ACCESS( pGainFeature )->SetValue (theRoundGain );
    if( VmbErrorSuccess != res )
       {
          return res;
@@ -715,7 +717,7 @@ void *vimcThread (void *threadNumber)
                                           avtCameras[theCameraNumber].actualSettings.theShutter = theExposureActual;
                                           imageParameter.value = std::to_string(theExposureActual);
                                           imageParameter.cameraNumber = theCameraNumber;
-
+                                          myLcm.publish("M_STATUS_PARAMETERS", &imageParameter);
                                        }
                                  }
                            }
@@ -733,6 +735,7 @@ void *vimcThread (void *threadNumber)
                                           avtCameras[theCameraNumber].actualSettings.theGain = theGainActual;
                                           imageParameter.value = std::to_string(theGainActual);
                                           imageParameter.cameraNumber = theCameraNumber;
+                                          myLcm.publish("M_STATUS_PARAMETERS", &imageParameter);
 
                                        }
                                  }

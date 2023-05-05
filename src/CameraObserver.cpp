@@ -25,6 +25,8 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 =============================================================================*/
+/* note original AVT code has been modified to fit camera requirements of habcam, May 2023 jch*/
+
 #include <iostream>
 #include <string.h>
 

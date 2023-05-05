@@ -26,6 +26,8 @@
 
 =============================================================================*/
 
+/* note original AVT code has been modified to fit camera requirements of habcam, May 2023 jch*/
+
 #include <iostream>
 #include <iomanip>
 #include <time.h>
@@ -147,7 +149,14 @@ void FrameObserver::FrameReceived( const AVT::VmbAPI::FramePtr pFrame )
                if(!anyError)
                   {
 
-                     cv::Mat cvMat = cv::Mat(imageToPublish.height, imageToPublish.width, CV_8UC1, pBuffer );
+                       //cv::Mat cvMat = cv::Mat(imageToPublish.height, imageToPublish.width, CV_8UC1, pBuffer ); // below line added 5 May 2023 jch
+                       cv::Mat cvMat = cv::Mat(imageToPublish.height, imageToPublish.width, CV_16UC1, pBuffer );
+                      /* cv::namedWindow("left single");
+                    cv::imshow("left single",cvMat);
+                    cv::waitKey(0); // Wait for any keystroke in the window
+
+                    cv::destroyWindow("left single");*/
+
                      if(cvMat.empty())
                         {
                            printf("empty image!\n");
@@ -218,7 +227,7 @@ void FrameObserver::FrameReceived( const AVT::VmbAPI::FramePtr pFrame )
                     // printf(" the size:  %d\n",sizeof(imageToPublish));
                      //avtCameras[cameraNumber].lcmChannelName
                      int success = myLcm.publish(avtCameras[cameraNumber].lcmChannelName,&imageToPublish);
-                     printf(" camera topic %s success = %d\n",topicName,success);
+                     //printf(" camera topic %s success = %d\n",topicName,success);
                      printf(".");
                      fflush(stdout);
                   }
@@ -229,6 +238,7 @@ void FrameObserver::FrameReceived( const AVT::VmbAPI::FramePtr pFrame )
       }
    else
       {
+           printf("could not get recieve status from incoming frame!\n");
       }
 }
 

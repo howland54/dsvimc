@@ -174,6 +174,8 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             whichCamera = 0;
             leftTime = image->utime;
             workingImage = cv::Mat(image->height, image->width, CV_16UC1, (void *)image->data.data());
+
+
             leftImage = workingImage.clone();
 
 
@@ -183,7 +185,8 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             //cv::normalize(leftImage,leftNormalizedImage,0, 255,cv::NORM_MINMAX);
 
             cv::cvtColor(leftImage,leftColorImage,cv::COLOR_BayerBG2BGR,0);
-            leftColorImage.convertTo(dst,CV_8UC3,0.003891051); // 1/257 to get the full range
+            //leftColorImage.convertTo(dst,CV_8UC3,0.003891051); // 1/257 to get the full range
+            leftColorImage.convertTo(dst,CV_8UC3,0.0625); // 1/16 to get the full range
 
             leftImageToPublish.width = image->width;
             leftImageToPublish.height = image->height;
@@ -201,11 +204,11 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                     rightImage = cv::Mat(image->height, image->width, CV_8U, 128);
                     theStereoEvent.imageState = 1;
                 }
-            /*cv::namedWindow("left");
+           /* cv::namedWindow("left");
          cv::imshow("left",leftColorImage);
          cv::waitKey(0); // Wait for any keystroke in the window
 
-         cv::destroyWindow("windowName"); //destroy the created window* */
+         cv::destroyWindow("windowName");*/
 
             //printf(" got a left\n");
 
@@ -224,7 +227,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             //cv::normalize(rightImage,rightNormalizedImage,0, 255,cv::NORM_MINMAX);
 
             cv::cvtColor(rightImage,rightColorImage,cv::COLOR_BayerBG2BGR,0);
-            rightColorImage.convertTo(dst,CV_8UC3,0.003891051); // 1/257 to get the full range
+            rightColorImage.convertTo(dst,CV_8UC3,0.0625); // 1/16 to get the full range
 
             rightImageToPublish.width = image->width;
             rightImageToPublish.height = image->height;
@@ -361,9 +364,20 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                     int numChars = makeTimeString(thePairTime,imageTimeString,recordingPrefix, "tif");
                     cv::Mat stereoImage = cv::Mat(image->height, image->width*2, CV_16UC1);
                     cv::hconcat(leftImage,rightImage,stereoImage);
+
+                    /*double minVal;
+                                double maxVal;
+                                cv::Point minLoc;
+                                cv::Point maxLoc;
+
+                                cv::minMaxLoc( stereoImage, &minVal, &maxVal, &minLoc, &maxLoc );
+
+                                std::cout << "min val: " << minVal << std::endl;
+                                std::cout << "max val: " << maxVal << std::endl;
+                                */
                     snprintf(imageName,767,"%s/%s",theDataDir,imageTimeString);
                     int theImageWidthBytes = image->width * 4;
-
+                    int stereoTiffSuccess = 0;
                     TIFF *out= TIFFOpen(imageName, "w");
                     if(out)
                         {
@@ -406,6 +420,8 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                                         buf += theImageWidthBytes;
                                 }
                             (void) TIFFClose(out);
+                            stereoTiffSuccess = 1;
+
                             char noCommaDescription[1024];
                             int len = snprintf(noCommaDescription,1024, "%s %.6f,%.6f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.5f,%.2f,%.5f,%d,%d,%d,%d,%.4f,%.4f,%.2f",imageTimeString,theStereoEvent.latitude, theStereoEvent.longitude,theStereoEvent.heading,theStereoEvent.pitch,
                                 theStereoEvent.roll, theStereoEvent.altitude0,theStereoEvent.altitude1,theStereoEvent.depth,theStereoEvent.salinity, theStereoEvent.temperature, theStereoEvent.dO,
@@ -418,7 +434,11 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                                 }
 
                         }
-
+                    else
+                        {
+                            stereoTiffSuccess = 0;
+                        }
+                    stereoWriteResult = stereoTiffSuccess;
 
                     // here's the image description that was in the old code
 
