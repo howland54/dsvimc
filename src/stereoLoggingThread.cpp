@@ -185,8 +185,12 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             //cv::normalize(leftImage,leftNormalizedImage,0, 255,cv::NORM_MINMAX);
 
             cv::cvtColor(leftImage,leftColorImage,cv::COLOR_BayerBG2BGR,0);
+            std::vector<int> tags = {TIFFTAG_COMPRESSION, COMPRESSION_NONE,cv::IMREAD_ANYDEPTH };
+
+            cv::imwrite("foo.tif",leftColorImage);
             //leftColorImage.convertTo(dst,CV_8UC3,0.003891051); // 1/257 to get the full range
             leftColorImage.convertTo(dst,CV_8UC3,0.0625); // 1/16 to get the full range
+
 
             leftImageToPublish.width = image->width;
             leftImageToPublish.height = image->height;
@@ -363,7 +367,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
 
                     int numChars = makeTimeString(thePairTime,imageTimeString,recordingPrefix, "tif");
                     cv::Mat stereoImage = cv::Mat(image->height, image->width*2, CV_16UC1);
-                    cv::hconcat(leftImage,rightImage,stereoImage);
+                    cv::hconcat(leftImage*16,rightImage*16,stereoImage);
 
                     /*double minVal;
                                 double maxVal;
@@ -376,6 +380,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                                 std::cout << "max val: " << maxVal << std::endl;
                                 */
                     snprintf(imageName,767,"%s/%s",theDataDir,imageTimeString);
+
                     int theImageWidthBytes = image->width * 4;
                     int stereoTiffSuccess = 0;
                     TIFF *out= TIFFOpen(imageName, "w");
@@ -432,6 +437,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                                     fprintf(tenMinuteLogFile,"%s\n",noCommaDescription);
                                     fflush(tenMinuteLogFile);
                                 }
+
 
                         }
                     else

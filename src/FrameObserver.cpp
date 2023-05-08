@@ -95,6 +95,7 @@ void FrameObserver::FrameReceived( const AVT::VmbAPI::FramePtr pFrame )
    bool anyError = false;
    bool needNewDirectory = false;
    char loggingRecord[2048];
+   cv::Mat  imageCopy;
    if( VmbErrorSuccess == pFrame->GetReceiveStatus( eReceiveStatus ) )
       {
          struct timeval tv;
@@ -111,7 +112,7 @@ void FrameObserver::FrameReceived( const AVT::VmbAPI::FramePtr pFrame )
 
          //rov_time_t imageTime = rov_get_time();
          //rov_time_t imageTime = (double)myTime;
-         //printf(" image time:  %0.3f\n",imageTime);
+         //printf(" image time:  %0.3f\n",imageTime);VmbUint16_t
          VmbErrorType err = SP_ACCESS( myFrame )->GetImage( pBuffer );
          if ( VmbErrorSuccess == err )
             {
@@ -146,13 +147,40 @@ void FrameObserver::FrameReceived( const AVT::VmbAPI::FramePtr pFrame )
                      anyError = true;
                   }
 
+               // now promote the image
+
+
+
                if(!anyError)
                   {
+                       /* VmbUint16_t *place;
+                        VmbUint16_t value;
+                        place = (VmbUint16_t *)pBuffer;
+                        int pixelShift = 0;
+                        for(int pixelNum = 0; pixelNum < imageToPublish.width * imageToPublish.height; pixelNum++)
+                            {
+                                value = *(pBuffer + pixelShift * sizeof(VmbUint16_t)) << 4;
+                                *place = value;
+                                place ++;
+                                pixelShift++;
+                            }
+*/
 
                        //cv::Mat cvMat = cv::Mat(imageToPublish.height, imageToPublish.width, CV_8UC1, pBuffer ); // below line added 5 May 2023 jch
-                       cv::Mat cvMat = cv::Mat(imageToPublish.height, imageToPublish.width, CV_16UC1, pBuffer );
-                      /* cv::namedWindow("left single");
-                    cv::imshow("left single",cvMat);
+                       cv::Mat cvMat = cv::Mat(imageToPublish.height, imageToPublish.width, CV_16UC1, pBuffer);
+                       imageCopy = cvMat.clone();
+                       double minVal;
+                                                       /*double maxVal;
+                                                       cv::Point minLoc;
+                                                       cv::Point maxLoc;
+
+                                                       cv::minMaxLoc( imageCopy, &minVal, &maxVal, &minLoc, &maxLoc );
+
+                                                       std::cout << "min val: " << minVal << std::endl;
+                                                       std::cout << "max val: " << maxVal << std::endl;*/
+
+                       /*cv::namedWindow("left single");
+                    cv::imshow("left single",imageCopy);
                     cv::waitKey(0); // Wait for any keystroke in the window
 
                     cv::destroyWindow("left single");*/
@@ -210,7 +238,7 @@ void FrameObserver::FrameReceived( const AVT::VmbAPI::FramePtr pFrame )
                            makeFileName(fileName,tv,avtCameras[cameraNumber].filenamePrefix);
 
                            snprintf(imageName,767,"%s/%s",theDataDir,fileName);
-                           cv::imwrite(imageName,cvMat,tags);
+                           cv::imwrite(imageName,16.0 * imageCopy,tags);
                            int logLen = snprintf(loggingRecord,2047,"IMG %04d/%02d/%02d %02d:%02d:%02d.%03d IMWRITE %s %d %0.2f %0.2f",year,month+1,day,hour,minute,gmtime_time.tm_sec,ftime_time.millitm,fileName,avtCameras[cameraNumber].actualSettings.cameraSynced,
                                                  avtCameras[cameraNumber].actualSettings.theGain, avtCameras[cameraNumber].actualSettings.theShutter);
                            msg_send(LOGGING_THREAD, ANY_THREAD, LOG,logLen,loggingRecord);

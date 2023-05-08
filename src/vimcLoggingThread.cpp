@@ -71,7 +71,8 @@ void *loggingThread (void *)
    // wakeup message
    printf ("LOGGING_THREAD (thread %d) initialized \n", LOGGING_THREAD);
    printf ("LOGGING_THREAD File %s compiled at %s on %s\n", __FILE__, __TIME__, __DATE__);
-   // sleep a little so the camera threads can be started up and be waiting for a message if a camera is already on the bus
+   // sleep a little so the camera threads can be started up and be waiting for a message if  cd /media/habcam/
+
    usleep(700000);
    int msg_success = msg_queue_new(LOGGING_THREAD, "logging thread");
 

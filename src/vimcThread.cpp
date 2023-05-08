@@ -362,13 +362,13 @@ VmbErrorType setGain(int theCameraNumber, AVT::VmbAPI::CameraPtr theAVTCamera,do
       {
          return res;
       }
-   double theGainActual;
+   long long theGainActual;
    res = SP_ACCESS( pGainFeature )->GetValue(theGainActual);
    if( VmbErrorSuccess != res )
       {
          return res;
       }
-   avtCameras[theCameraNumber].actualSettings.theGain = theGainActual;
+   avtCameras[theCameraNumber].actualSettings.theGain = (double)theGainActual;
    return res;
 }
 
@@ -697,14 +697,16 @@ void *vimcThread (void *threadNumber)
                      }
                   case CAMERA_QUERY:
                      {
+                        //printf(" camera query\n");
                         image::image_parameter_t imageParameter;
                         if(MAX_N_OF_PARAMETER_QUERIES == currentQueryType)
                            {
                               currentQueryType = CAMERA_SHUTTER;
                            }
 
-                        else if(CAMERA_SHUTTER == parameterQueryTypes[currentQueryType])
+                        if(CAMERA_SHUTTER == parameterQueryTypes[currentQueryType])
                            {
+                              //printf(" exposure\n");
                               imageParameter.key = "EXPOSURE";
                               AVT::VmbAPI::FeaturePtr pExposureFeature;
                               VmbErrorType res = SP_ACCESS( theAVTCamera )->GetFeatureByName( "ExposureTimeAbs", pExposureFeature );
@@ -718,24 +720,28 @@ void *vimcThread (void *threadNumber)
                                           imageParameter.value = std::to_string(theExposureActual);
                                           imageParameter.cameraNumber = theCameraNumber;
                                           myLcm.publish("M_STATUS_PARAMETERS", &imageParameter);
+                                          //printf(" exposure = %lf %s\n",theExposureActual);
                                        }
                                  }
                            }
                         else if(CAMERA_GAIN == parameterQueryTypes[currentQueryType])
                            {
+                             // printf(" gain\n");
                               imageParameter.key = "GAIN";
                               AVT::VmbAPI::FeaturePtr pGainFeature;
-                              VmbErrorType res = SP_ACCESS( theAVTCamera )->GetFeatureByName( "Gain", pGainFeature );
+                              VmbErrorType res = SP_ACCESS( theAVTCamera )->GetFeatureByName( "GainRaw", pGainFeature );
                               if( VmbErrorSuccess == res )
                                  {
-                                    double theGainActual;
+                                    long long theGainActual;
                                     res = SP_ACCESS( pGainFeature )->GetValue(theGainActual);
+                                    //printf(" res %d\n",res);
                                     if( VmbErrorSuccess == res )
                                        {
-                                          avtCameras[theCameraNumber].actualSettings.theGain = theGainActual;
+                                          avtCameras[theCameraNumber].actualSettings.theGain = (double)theGainActual;
                                           imageParameter.value = std::to_string(theGainActual);
                                           imageParameter.cameraNumber = theCameraNumber;
                                           myLcm.publish("M_STATUS_PARAMETERS", &imageParameter);
+                                          //printf(" gain = %lf\n",(double)theGainActual);
 
                                        }
                                  }
