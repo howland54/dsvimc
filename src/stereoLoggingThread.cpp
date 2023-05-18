@@ -185,9 +185,9 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             //cv::normalize(leftImage,leftNormalizedImage,0, 255,cv::NORM_MINMAX);
 
             cv::cvtColor(leftImage,leftColorImage,cv::COLOR_BayerBG2BGR,0);
-            std::vector<int> tags = {TIFFTAG_COMPRESSION, COMPRESSION_NONE,cv::IMREAD_ANYDEPTH };
+            //std::vector<int> tags = {TIFFTAG_COMPRESSION, COMPRESSION_NONE,cv::IMREAD_ANYDEPTH };
 
-            cv::imwrite("foo.tif",leftColorImage);
+            //cv::imwrite("foo.tif",leftColorImage);
             //leftColorImage.convertTo(dst,CV_8UC3,0.003891051); // 1/257 to get the full range
             leftColorImage.convertTo(dst,CV_8UC3,0.0625); // 1/16 to get the full range
 

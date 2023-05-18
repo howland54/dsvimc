@@ -150,8 +150,8 @@ void *simulationThread (void *)
         {
             for (int k = 0; k < image.cols/2; k++)
             {
-                leftImage.at<unsigned short>(j,k) = image.at<unsigned short>(j,k);
-                rightImage.at<unsigned short>(j,k) = image.at<unsigned short>(j,k + image.cols/2);
+                leftImage.at<unsigned short>(j,k) = image.at<unsigned short>(j,k)/16.0;
+                rightImage.at<unsigned short>(j,k) = image.at<unsigned short>(j,k + image.cols/2)/16.0;
             }
         }
 
@@ -250,10 +250,12 @@ void *simulationThread (void *)
                                 leftImageToPublish.utime =(long int)( 1000.0 * leftImageTime);
 
                                 int success = myLcm.publish(avtCameras[0].lcmChannelName,&leftImageToPublish);
-
+                                printf("l");
                                 rov_time_t rightImageTime = rov_get_time();
                                 rightImageToPublish.utime =(long int)( 1000.0 * rightImageTime);
                                 success = myLcm.publish(avtCameras[1].lcmChannelName,&rightImageToPublish);
+                                printf("r");
+                                fflush(stdout);
 
 
                                 break;
