@@ -106,7 +106,7 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
                     }
                 else if((headingOffset > 80.0) && (headingOffset <100.0))
                     {
-                        cookedPitch =  -theMicrostrain->raw_state.pos[DOF_ROLL] ;
+                        cookedPitch =  theMicrostrain->raw_state.pos[DOF_ROLL] ;
                         cookedRoll = theMicrostrain->raw_state.pos[DOF_PITCH];
                     }
                 else if((headingOffset > 170.0) && (headingOffset <190.0))
