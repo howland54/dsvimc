@@ -250,11 +250,11 @@ void *simulationThread (void *)
                                 leftImageToPublish.utime =(long int)( 1000.0 * leftImageTime);
 
                                 int success = myLcm.publish(avtCameras[0].lcmChannelName,&leftImageToPublish);
-                                printf("l");
+                                printf(".");
                                 rov_time_t rightImageTime = rov_get_time();
                                 rightImageToPublish.utime =(long int)( 1000.0 * rightImageTime);
                                 success = myLcm.publish(avtCameras[1].lcmChannelName,&rightImageToPublish);
-                                printf("r");
+                                printf(".");
                                 fflush(stdout);
 
 

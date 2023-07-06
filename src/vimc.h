@@ -92,6 +92,7 @@ typedef struct
    bool                    saveImages;
    bool                    doNotUseInStereoLogging;
    bool                    saveJPG;
+   int                     jpgSkip;
    char                    *jpgPrefix;
    char                    *jpgSaveRoot;
 

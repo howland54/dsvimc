@@ -93,8 +93,8 @@ void *loggingThread (void *)
          abort ();
       }
    int success = readIniLoggingProcess (&myLog);
-   launched_timer_data_t *queryTimer;
-   queryTimer = launch_timer_new(LOGGING_QUERY_TIME,-1,LOGGING_THREAD,LOG_QUERY);
+   //launched_timer_data_t *queryTimer;
+   //queryTimer = launch_timer_new(LOGGING_QUERY_TIME,-1,LOGGING_THREAD,LOG_QUERY);
 
 
    // loop forever
@@ -172,8 +172,11 @@ readIniLoggingProcess(logging_t *theLog)
    IniFile  *iniFile = new IniFile();
    int okINI = iniFile->openIni(flyIniFile);
    if(GOOD_INI_FILE_READ == okINI)
-
-   theLog->logging_directory = iniFile->readString ( "GENERAL", "LOGGING_DIRECTORY", "/data");
+      {
+         theLog->logging_directory = iniFile->readString ( "GENERAL", "LOGGING_DIRECTORY", "/data");
+         iniFile->closeIni();
+      }
+   return okINI;
 }
 
 static int logOpenAsciiLog_file (logging_t * log)

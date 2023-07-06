@@ -38,6 +38,7 @@
 #include <pthread.h>
 #include "vimc.h"
 extern avtCameraT  avtCameras[MAX_N_OF_CAMERAS];
+int     jpgCount[2];
 char *imgRoot;
 bool  saveStereo;
 extern int   nOfAvtCameras;
@@ -48,7 +49,8 @@ bool  makeTenMinuteLogFiles;
 
 bool stereoWriteResult;
 
-int makeTimeString (double total_secs, char *str, char *prefix, char *suffix);
+//int makeTimeString (double total_secs, char *str, char *prefix, char *suffix);
+int makeTimeString (double total_secs, int year, int month, int monthDay, int hour, int min, int seconds, int milliseconds, char *str, char *prefix, char *suffix);
 
 static int lastYear;
 static int lastMonth;
@@ -68,6 +70,10 @@ typedef struct
 } lastJPGsT;
 
 static lastJPGsT lastJPEGS[2];
+
+static char theDataDir[512];
+static char theJPGDataDir[2][512];
+
 
 
 
@@ -100,6 +106,10 @@ cv::Mat  rightColorImage;
 cv::Mat  leftNormalizedImage;
 cv::Mat  rightNormalizedImage;
 cv::Mat dst;
+
+cv::Mat leftJpegImage;
+cv::Mat rightJpegImage;
+
 
 char    *altimeterStereoChannelName;
 char    *ctdStereoChannelName;
@@ -159,9 +169,9 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
 
 
     bool needNewDirectory = false;
-    bool needANewJPGDirectory = false;
-    char theDataDir[512];
-    char theJPGDataDir[512];
+    bool needANewJPGDirectory[2];
+    needANewJPGDirectory[0] = false;
+    needANewJPGDirectory[1] = false;
     char description[1024];
     char loggingRecord[2048];
 
@@ -181,15 +191,16 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
 
             leftColorImage = cv::Mat(image->height, image->width, CV_16UC3);
             //leftNormalizedImage = cv::Mat(image->height, image->width, CV_16UC1);
-            dst = cv::Mat(image->height, image->width, CV_8UC3);;
+            leftJpegImage = cv::Mat(image->height, image->width, CV_8UC3);;
             //cv::normalize(leftImage,leftNormalizedImage,0, 255,cv::NORM_MINMAX);
 
+            //cv::cvtColor(leftImage,leftColorImage,cv::COLOR_BayerRG2BGR,0);
             cv::cvtColor(leftImage,leftColorImage,cv::COLOR_BayerBG2BGR,0);
             //std::vector<int> tags = {TIFFTAG_COMPRESSION, COMPRESSION_NONE,cv::IMREAD_ANYDEPTH };
 
             //cv::imwrite("foo.tif",leftColorImage);
             //leftColorImage.convertTo(dst,CV_8UC3,0.003891051); // 1/257 to get the full range
-            leftColorImage.convertTo(dst,CV_8UC3,0.0625); // 1/16 to get the full range
+            leftColorImage.convertTo(leftJpegImage,CV_8UC3,0.0625); // 1/16 to get the full range
 
 
             leftImageToPublish.width = image->width;
@@ -198,7 +209,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             leftImageToPublish.data.resize((uint32_t)leftImageToPublish.size);
             leftImageToPublish.pixelformat = image::image_t::PIXEL_FORMAT_BGR;
             leftImageToPublish.utime =image->utime;
-            std::copy(dst.datastart, dst.datastart +  leftImageToPublish.size, leftImageToPublish.data.begin());
+            std::copy(leftJpegImage.datastart, leftJpegImage.datastart +  leftImageToPublish.size, leftImageToPublish.data.begin());
             int success = myLcm.publish("LeftColor",&leftImageToPublish);
 
 
@@ -227,11 +238,24 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
 
             rightColorImage = cv::Mat(image->height, image->width, CV_16UC3);
             //rightNormalizedImage = cv::Mat(image->height, image->width, CV_16UC1);
-            dst = cv::Mat(image->height, image->width, CV_8UC3);;
+            rightJpegImage = cv::Mat(image->height, image->width, CV_8UC3);;
             //cv::normalize(rightImage,rightNormalizedImage,0, 255,cv::NORM_MINMAX);
 
+            //cv::cvtColor(rightImage,rightColorImage,cv::COLOR_BayerRG2BGR,0);
             cv::cvtColor(rightImage,rightColorImage,cv::COLOR_BayerBG2BGR,0);
-            rightColorImage.convertTo(dst,CV_8UC3,0.0625); // 1/16 to get the full range
+            //vector<cv::Mat> channels;
+            //cv::split(rightColorImage,channels);
+            //cv::normalize(channels[2], channels[2], 0, 4096, cv::NORM_MINMAX);
+            //cv:: merge(channels,rightColorImage);
+
+
+
+
+            //cv::Ptr<cv::xphoto::WhiteBalancer> wb;
+            //wb = cv::xphoto::createLearningBasedWB();
+
+            //wb->balanceWhite(rightColorImage,rightColorImage);
+            rightColorImage.convertTo(rightJpegImage,CV_8UC3,0.0625); // 1/16 to get the full range
 
             rightImageToPublish.width = image->width;
             rightImageToPublish.height = image->height;
@@ -239,7 +263,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             rightImageToPublish.data.resize((uint32_t)rightImageToPublish.size);
             rightImageToPublish.pixelformat = image::image_t::PIXEL_FORMAT_BGR;
             rightImageToPublish.utime =image->utime;
-            std::copy(dst.datastart, dst.datastart +  rightImageToPublish.size , rightImageToPublish.data.begin());
+            std::copy(rightJpegImage.datastart, rightJpegImage.datastart +  rightImageToPublish.size , rightImageToPublish.data.begin());
             //std::string theTopic("RightColor");
             int success = myLcm.publish("RightColor",&rightImageToPublish);
 
@@ -265,6 +289,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
 
     if(leftTime && rightTime)
         {
+            double thePairTime;
             if(abs(leftTime - rightTime) < INTERIMAGE_CRITERIA)
                 {
                     // store the concatenated image!
@@ -280,7 +305,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
 
 
                     stereoPairCount++;
-                    double thePairTime = (double)leftTime/1000.0;
+                    thePairTime = (double)leftTime/1000.0;
                     struct timeb  ftime_time;
                     struct tm     gmtime_time;
 
@@ -295,6 +320,8 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                     int day = gmtime_time.tm_mday;
                     int hour = gmtime_time.tm_hour;
                     int minute = gmtime_time.tm_min;
+                    int secs = gmtime_time.tm_sec;
+                    int milliseconds = ftime_time.millitm;
                     int dayOfYear = gmtime_time.tm_yday;
 
                     int	trialTenMinute = minute - (minute % 10);
@@ -365,7 +392,8 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                     //Now writing image to the file one strip at a timeif (description)
 
 
-                    int numChars = makeTimeString(thePairTime,imageTimeString,recordingPrefix, "tif");
+                    //int numChars = makeTimeString(thePairTime,imageTimeString,recordingPrefix, "tif");
+                    int numChars = makeTimeString(thePairTime,year, month, day, hour,minute, secs, milliseconds, imageTimeString,recordingPrefix, "tif");
                     cv::Mat stereoImage = cv::Mat(image->height, image->width*2, CV_16UC1);
                     cv::hconcat(leftImage*16,rightImage*16,stereoImage);
 
@@ -428,10 +456,8 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                             stereoTiffSuccess = 1;
 
                             char noCommaDescription[1024];
-                            int len = snprintf(noCommaDescription,1024, "%s %.6f,%.6f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.5f,%.2f,%.5f,%d,%d,%d,%d,%.4f,%.4f,%.2f",imageTimeString,theStereoEvent.latitude, theStereoEvent.longitude,theStereoEvent.heading,theStereoEvent.pitch,
-                                theStereoEvent.roll, theStereoEvent.altitude0,theStereoEvent.altitude1,theStereoEvent.depth,theStereoEvent.salinity, theStereoEvent.temperature, theStereoEvent.dO,
-                                theStereoEvent.cdom, theStereoEvent.fluor, theStereoEvent.scatter, theStereoEvent.therm,theStereoEvent.ph1, theStereoEvent.ph2,theStereoEvent.fathometer);
-                            //msg_send(LOGGING_THREAD, ANY_THREAD, LOG,len,noCommaDescription);
+                            int len = snprintf(noCommaDescription,1024, "IMG %04d/%02d/%02d %02d:%02d:%02d.%03d IMWRITE %s %s",year, month+1, day, hour, minute, secs, milliseconds, imageTimeString,description);
+                            msg_send(LOGGING_THREAD, ANY_THREAD, LOG,len,noCommaDescription);
                             if(tenMinuteLogFile && makeTenMinuteLogFiles)
                                 {
                                     fprintf(tenMinuteLogFile,"%s\n",noCommaDescription);
@@ -445,6 +471,94 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                             stereoTiffSuccess = 0;
                         }
                     stereoWriteResult = stereoTiffSuccess;
+                    // jpeg savings goes here
+
+                    for(int cameraNumber = 0; cameraNumber < nOfAvtCameras; cameraNumber++)
+                       {
+                          if(avtCameras[cameraNumber].saveJPG)
+                              {
+                                if(!(jpgCount[cameraNumber] % avtCameras[cameraNumber].jpgSkip))
+                                   {
+
+                                      if(dayOfYear != lastJPEGS[cameraNumber].lastDayOfYear)
+                                         {
+                                            needANewJPGDirectory[cameraNumber] = true;
+                                            lastJPEGS[cameraNumber].lastDayOfYear = dayOfYear;
+                                         }
+                                      else
+                                         {
+                                            if(hour != lastJPEGS[cameraNumber].lastHour)
+                                               {
+                                                  needANewJPGDirectory[cameraNumber] = true;
+                                                  lastJPEGS[cameraNumber].lastHour = hour;
+                                               }
+                                            else
+                                               {
+                                                  if(trialTenMinute != lastJPEGS[cameraNumber].lastTenMinute)
+                                                     {
+                                                        needANewJPGDirectory[cameraNumber] = true;
+                                                        lastJPEGS[cameraNumber].lastTenMinute = trialTenMinute;
+                                                     }
+                                               }
+                                         }
+                                      if(needANewJPGDirectory[cameraNumber])
+                                         {
+                                            snprintf(&(theJPGDataDir[cameraNumber][0]),511,"%s/%04d%02d%02d/%04d%02d%02d_%02d/%04d%02d%02d_%02d%02d",avtCameras[cameraNumber].jpgSaveRoot,year,month+1,day,
+                                                     year,month+1,day,hour,
+                                                     year,month+1,day,hour,trialTenMinute );
+                                            struct stat sb;
+                                            if (stat(&(theJPGDataDir[cameraNumber][0]), &sb) != 0)
+                                               {
+                                                  /* path does not exist - create directory */
+                                                  int directoryRetCode = mkdir_p(&(theJPGDataDir[cameraNumber][0]),ACCESSPERMS);
+                                                  if (directoryRetCode < 0)
+                                                     {
+                                                        printf("error creating directory %s\n,&(theJPGDataDir[cameraNumber][0])");
+                                                     }
+                                                  else
+                                                     {
+                                                        int logLen = snprintf(loggingRecord,2047,"SYS %04d/%02d/%02d %02d:%02d:%02d.%03d MKDIR %s RETCODE %d",year,month+1,day,hour,minute,gmtime_time.tm_sec,ftime_time.millitm,theJPGDataDir,directoryRetCode);
+                                                        msg_send(LOGGING_THREAD, ANY_THREAD, LOG,logLen,loggingRecord);
+                                                     }
+                                               }
+
+                                         }
+                                      char jpgPrefix[512];
+                                      char jpgImageName[768];
+                                      char jpgImageTimeString[512];
+                                      snprintf(jpgPrefix,511,"%s%s",avtCameras[cameraNumber].jpgPrefix,recordingPrefix);
+                                      //int numChars = makeTimeString(thePairTime,jpgImageTimeString,jpgPrefix, "jpg");
+                                      int numChars = makeTimeString(thePairTime,year, month, day, hour, minute, secs, milliseconds, jpgImageTimeString,jpgPrefix, "jpg");
+
+                                      snprintf(jpgImageName,767,"%s/%s",&(theJPGDataDir[cameraNumber][0]),jpgImageTimeString);
+                                      bool jpgWriteResult;
+                                      if(0 == cameraNumber)
+                                         {
+                                            jpgWriteResult = cv::imwrite(jpgImageName,leftJpegImage);
+                                            /*cv::namedWindow("left");
+                                                         cv::imshow("lefts",leftColorImage);
+                                                           cv::waitKey(0);
+                                                          cv::destroyWindow("lefts");*/
+                                         }
+                                      else
+                                         {
+                                            jpgWriteResult = cv::imwrite(jpgImageName,rightJpegImage);
+                                         }
+                                      //printf(" wrote %s\n",jpgImageName);
+                                      if(jpgWriteResult)
+                                         {
+                                            Exiv2::Image::AutoPtr image = Exiv2::ImageFactory::open(jpgImageName);
+                                            image->readMetadata();
+                                            Exiv2::ExifData &exifData = image->exifData();
+                                            exifData["Exif.Image.ImageDescription"] = description;
+                                            image->writeMetadata();
+                                         }
+                                   }
+                              }
+                          jpgCount[cameraNumber]++;
+                       }
+
+
 
                     // here's the image description that was in the old code
 
@@ -466,109 +580,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
         }
 
 
-    if(avtCameras[whichCamera].saveJPG)
-        {
-            Exiv2::XmpParser::initialize();
-            ::atexit(Exiv2::XmpParser::terminate);
-            double theImageTime;
-            if(leftCameraID == whichCamera)
-                {
-                    theImageTime = leftTime/1000.0;
-                }
-            else
-                {
-                    theImageTime = rightTime/1000.0;
-                }
 
-            struct timeb  ftime_time;
-            struct tm     gmtime_time;
-
-            ftime_time.time      = (time_t) floor(theImageTime);
-            ftime_time.millitm   = (unsigned short int) (fmod(theImageTime,1.0) * 1000.0);
-            ftime_time.timezone  =  0;
-            ftime_time.dstflag   =  0;
-
-            gmtime_r(&ftime_time.time, &gmtime_time);
-            int year = gmtime_time.tm_year+1900;
-            int month = gmtime_time.tm_mon;
-            int day = gmtime_time.tm_mday;
-            int hour = gmtime_time.tm_hour;
-            int minute = gmtime_time.tm_min;
-            int dayOfYear = gmtime_time.tm_yday;
-
-            int	trialTenMinute = minute - (minute % 10);
-
-            if(dayOfYear != lastJPEGS[whichCamera].lastDayOfYear)
-                {
-                    needANewJPGDirectory = true;
-                    lastJPEGS[whichCamera].lastDayOfYear = dayOfYear;
-                }
-            else
-                {
-                    if(hour != lastJPEGS[whichCamera].lastHour)
-                        {
-                            needANewJPGDirectory = true;
-                            lastJPEGS[whichCamera].lastHour = hour;
-                        }
-                    else
-                        {
-                            if(trialTenMinute != lastJPEGS[whichCamera].lastTenMinute)
-                                {
-                                    needANewJPGDirectory = true;
-                                    lastJPEGS[whichCamera].lastTenMinute = trialTenMinute;
-                                }
-                        }
-                }
-            if(needANewJPGDirectory)
-                {
-                    snprintf(theJPGDataDir,511,"%s/%04d%02d%02d/%04d%02d%02d_%02d/%04d%02d%02d_%02d%02d",avtCameras[whichCamera].jpgSaveRoot,year,month+1,day,
-                             year,month+1,day,hour,
-                             year,month+1,day,hour,trialTenMinute );
-                    struct stat sb;
-                    if (stat(theJPGDataDir, &sb) != 0)
-                        {
-                            /* path does not exist - create directory */
-                            int directoryRetCode = mkdir_p(theJPGDataDir,ACCESSPERMS);
-                            if (directoryRetCode < 0)
-                                {
-                                    printf("error creating directory %s\n,theJPGDataDir");
-                                }
-                            else
-                                {
-                                    int logLen = snprintf(loggingRecord,2047,"SYS %04d/%02d/%02d %02d:%02d:%02d.%03d MKDIR %s RETCODE %d",year,month+1,day,hour,minute,gmtime_time.tm_sec,ftime_time.millitm,theJPGDataDir,directoryRetCode);
-                                    msg_send(LOGGING_THREAD, ANY_THREAD, LOG,logLen,loggingRecord);
-                                }
-                        }
-
-                }
-            char jpgPrefix[512];
-            char jpgImageName[768];
-            char jpgImageTimeString[512];
-            snprintf(jpgPrefix,511,"%s%s",avtCameras[whichCamera].jpgPrefix,recordingPrefix);
-            int numChars = makeTimeString(theImageTime,jpgImageTimeString,jpgPrefix, "jpg");
-            snprintf(jpgImageName,767,"%s/%s",theJPGDataDir,jpgImageTimeString);
-            bool jpgWriteResult
-                    ;if(0 == whichCamera)
-                {
-                    jpgWriteResult = cv::imwrite(jpgImageName,dst);
-                    /*cv::namedWindow("left");
-                                   cv::imshow("lefts",leftColorImage);
-                                     cv::waitKey(0);
-                                    cv::destroyWindow("lefts");*/
-                }
-            else
-                {
-                    jpgWriteResult = cv::imwrite(jpgImageName,dst);
-                }
-            if(jpgWriteResult)
-                {
-                    Exiv2::Image::AutoPtr image = Exiv2::ImageFactory::open(jpgImageName);
-                    image->readMetadata();
-                    Exiv2::ExifData &exifData = image->exifData();
-                    exifData["Exif.Image.ImageDescription"] = description;
-                    image->writeMetadata();
-                }
-        }
 
 
 
@@ -581,7 +593,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
 
 
 
-
+/*
 
 
 int makeTimeString (double total_secs, char *str, char *prefix, char *suffix)
@@ -629,6 +641,16 @@ int makeTimeString (double total_secs, char *str, char *prefix, char *suffix)
     return num_chars;
 
 }
+*/
+
+int makeTimeString (double total_secs, int year, int month, int monthDay, int hour, int min, int seconds, int milliseconds, char *str, char *prefix, char *suffix)
+{
+    int num_chars = sprintf (str, "%s.%04d%02d%02d.%02d%02d%02d%03d.%d.%s",prefix,year, month, monthDay,hour ,min, seconds, milliseconds,stereoPairCount,suffix);
+
+
+    return num_chars;
+}
+
 
 /*
  * snprintf(unqualifiedFileName,512,"%s.%04d%02d%02d.%02d%02d%02d%03d.%d.tif",imageNamePrefix,gmtTime->tm_year+1900,gmtTime->tm_mon+1,gmtTime->tm_mday, gmtTime->tm_hour,
@@ -661,14 +683,14 @@ void *stereoLoggingThread (void *)
     theStereoEvent.dO = 99.99;
     theStereoEvent.ph1 = 99.99;
     theStereoEvent.ph2 = 99.99;
-    theStereoEvent.cdom = 99.99;
+    theStereoEvent.cdom = 99;
     theStereoEvent.roll = 0.456;
     theStereoEvent.depth = 0.567;
-    theStereoEvent.fluor = 99.99;
+    theStereoEvent.fluor = 99;
     theStereoEvent.pitch = 0.789;
-    theStereoEvent.therm = 99.99;
+    theStereoEvent.therm = 99;
     theStereoEvent.heading = 0.901;
-    theStereoEvent.scatter = 99.99;
+    theStereoEvent.scatter = 99;
     theStereoEvent.latitude = -99.99;
     theStereoEvent.salinity = 0.876;
     theStereoEvent.altitude0 = 0.765;
@@ -677,9 +699,13 @@ void *stereoLoggingThread (void *)
     theStereoEvent.temperature = 0.543;
     theStereoEvent.conductivity = 0.432;
     theStereoEvent.imageState = 3;
-
+    jpgCount[0] = 0;
+    jpgCount[1] = 0;
 
     makeTenMinuteLogFiles = false;
+
+    Exiv2::XmpParser::initialize();
+    ::atexit(Exiv2::XmpParser::terminate);
 
     // wakeup message
     printf ("LOGGING_THREAD (thread %d) initialized \n", LOGGING_THREAD);
@@ -748,6 +774,7 @@ void *stereoLoggingThread (void *)
                     avtCameras[cameraNumber].doNotUseInStereoLogging = (bool)iniFile->readInt(cameraLabel,"CAMERA_BAD",0);
                     avtCameras[cameraNumber].saveJPG = (bool)iniFile->readInt(cameraLabel,"STORE_JPG",0);
 
+                    avtCameras[cameraNumber].jpgSkip = iniFile->readInt(cameraLabel,"JPEG_SKIP",1);
                     char *jpgSaveRoot = iniFile->readString(cameraLabel,"JPEG_SAVE_ROOT","./jpg");
                     avtCameras[cameraNumber].jpgSaveRoot = strdup(jpgSaveRoot);
                     free(jpgSaveRoot);

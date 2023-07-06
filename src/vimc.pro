@@ -26,6 +26,7 @@ LIBS += -L/usr/local/lib
 LIBS += -L../../dsvimlib/lib
 LIBS += -ldsvimlib
 LIBS += -llcm
+LIBS += -lopencv_xphoto
 #LIBS += -lmesobot-lcmtypes
 
 

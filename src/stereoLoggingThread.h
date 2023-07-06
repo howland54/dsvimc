@@ -10,10 +10,14 @@
 #include <sys/time.h>
 #include <lcm/lcm-cpp.hpp>
 
+using namespace std;
+
+
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgcodecs/imgcodecs.hpp>
 #include <opencv2/core/core.hpp>
+#include <opencv2/xphoto.hpp>
 #include "tiff.h"
 #include <tiffio.h>
 

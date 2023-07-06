@@ -288,8 +288,8 @@ main (int argc, char *argv[])
     time_t current_time;
 
     // call time() and localtime for hour and date
-    current_time = time (NULL);
-    tm = localtime (&current_time);
+    //current_time = time (NULL);
+    //tm = localtime (&current_time);
 
 
 
