@@ -166,8 +166,9 @@ void FrameObserver::FrameReceived( const AVT::VmbAPI::FramePtr pFrame )
                             }
 */
 
-                       //cv::Mat cvMat = cv::Mat(imageToPublish.height, imageToPublish.width, CV_8UC1, pBuffer ); // below line added 5 May 2023 jch
-                       cv::Mat cvMat = cv::Mat(imageToPublish.height, imageToPublish.width, CV_16UC1, pBuffer);
+                       cv::Mat cvMat = cv::Mat(imageToPublish.height, imageToPublish.width, CV_8UC1, pBuffer ); // below line added 5 May 2023 jch
+                       // actually, on 26 Jas 2024 chnged back to 8 bit publishing, since the cameras will now acquire at 8 bits
+                       //cv::Mat cvMat = cv::Mat(imageToPublish.height, imageToPublish.width, CV_16UC1, pBuffer);
                        imageCopy = cvMat.clone();
                        double minVal;
                                                        /*double maxVal;

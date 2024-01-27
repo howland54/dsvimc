@@ -38,6 +38,7 @@ double  headingOffset;
 double fathometerMultiplier;
 double fathometerBias;
 
+launched_timer_data_t * spartanPosTimer;
 #include "sensorThread.h"	/* sensor thread */
 
 extern lcm::LCM myLcm;
@@ -69,13 +70,21 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
 
         case SPI:			// recieved a SPI (Status Ping) message
             break;
+        case PPI:  // recieved a timer prompt to send position to the sparton thread
+          {
+             break;
+             gps_t   myGPS;
+             myGPS.latitude = sensor->vesselPosition.latitude;
+             myGPS.longitude = sensor->vesselPosition.longitude;
+             msg_send(SPARTON_THREAD, SENSOR_THREAD, WPOS, sizeof(myGPS), &myGPS);
+          }
 
 
         case BYE:  // received a bye message--time to give up the ghost--
             {
 
-                if( update_timer != NULL)
-                    launch_timer_disable(update_timer);
+                if( spartanPosTimer != NULL)
+                    launch_timer_disable(spartanPosTimer);
                 return;
 
 
@@ -375,7 +384,6 @@ void *sensorThread (void *)
     printf ("SENSOR File %s compiled at %s on %s\n", __FILE__, __TIME__, __DATE__);
     IniFile  *iniFile = new IniFile();
     int okINI = iniFile->openIni(flyIniFile);
-    bool stereoLogging;
     if(GOOD_INI_FILE_READ == okINI)
         {
 
@@ -402,6 +410,9 @@ void *sensorThread (void *)
             abort ();
 
         }
+
+    spartanPosTimer = launch_timer_new(POSITION_PROMPT_INTERVAL, -1, SENSOR_THREAD,  PPI);
+
 
 
     // loop forever

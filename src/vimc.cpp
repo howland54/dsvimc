@@ -43,6 +43,7 @@
 #include "sensorThread.h"
 #include "msNetThread.h"
 #include "simulationThread.h"
+#include "spartanThread.h"
 
 #include "lcmHandleThread.h"
 
@@ -105,6 +106,7 @@ main (int argc, char *argv[])
 
     nOfAvtCameras = 0;
     thisIsASimulation = false;
+    bool useSparton = true;
 
     fprintf (stderr, "File %s compiled on %s at %s by Jonathan C. Howland\n", __FILE__, __DATE__, __TIME__);
 
@@ -218,6 +220,7 @@ main (int argc, char *argv[])
                 }
 
             stereoLogging = (bool)iniFile->readInt("GENERAL","LOG_STEREO",true);
+            useSparton = (bool)iniFile->readInt("GENERAL","USE_SPARTON",1);
             iniFile->closeIni();
         }
 
@@ -250,9 +253,16 @@ main (int argc, char *argv[])
     make_thread_table_entry (GPS_THREAD, "GPS_THREAD", nio_thread, (void *)GPS_THREAD, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
     make_thread_table_entry (ALTIMETER_THREAD, "ALTIMETER_THREAD", nio_thread, (void *)ALTIMETER_THREAD, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
 
-    make_thread_table_entry (MS_NET_THREAD,"MS_NET_THREAD",msNetThread, (void *) MS_NET_THREAD, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
-    make_thread_table_entry (MS_NIO_THREAD, "MS_NIO_THREAD", nio_thread, (void *) MS_NIO_THREAD, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
-
+    if(!useSparton)
+      {
+          make_thread_table_entry (MS_NET_THREAD,"MS_NET_THREAD",msNetThread, (void *) MS_NET_THREAD, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
+          make_thread_table_entry (MS_NIO_THREAD, "MS_NIO_THREAD", nio_thread, (void *) MS_NIO_THREAD, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
+      }
+    else
+       {
+          make_thread_table_entry (SPARTON_THREAD,"SPARTON_THREAD",spartanThread, (void *) SPARTON_THREAD, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
+          make_thread_table_entry (SPARTON_NIO_THREAD, "SPARTON_NIO_THREAD", nio_thread, (void *) SPARTON_NIO_THREAD, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
+       }
     if(thisIsASimulation)
         {
             make_thread_table_entry (SIMULATION_THREAD, "SIMULATION_THREAD", simulationThread, (void *)NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
@@ -282,14 +292,9 @@ main (int argc, char *argv[])
                 }
         }
     // sleep for a bit to give the threads time to start up
-    usleep(700000);
+    usleep(720000);
 
-    struct tm *tm;
-    time_t current_time;
 
-    // call time() and localtime for hour and date
-    //current_time = time (NULL);
-    //tm = localtime (&current_time);
 
 
 

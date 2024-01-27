@@ -33,6 +33,8 @@
 #define DEFAULT_MICROSTRAIN_PITCH_OFFSET    0.00
 #define DEFAULT_MICROSTRAIN_HDG_OFFSET    0.00
 
+
+#define POSITION_PROMPT_INTERVAL       5.0
 extern char *flyIniFile;
 
 
@@ -60,6 +62,7 @@ typedef struct
   int bad_cnt;			//number bad parses since last good one
 }
 ctd_t;
+
 
 typedef struct
 {

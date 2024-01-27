@@ -183,15 +183,17 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
         {
             whichCamera = 0;
             leftTime = image->utime;
-            workingImage = cv::Mat(image->height, image->width, CV_16UC1, (void *)image->data.data());
+            //workingImage = cv::Mat(image->height, image->width, CV_16UC1, (void *)image->data.data());
+            workingImage = cv::Mat(image->height, image->width, CV_8UC1, (void *)image->data.data());
 
 
             leftImage = workingImage.clone();
 
-
-            leftColorImage = cv::Mat(image->height, image->width, CV_16UC3);
+            // 26 Jan 2024 jch all 16 bit stuff commented out and replaced with 8
+            //leftColorImage = cv::Mat(image->height, image->width, CV_16UC3);
+            leftColorImage = cv::Mat(image->height, image->width, CV_8UC3);
             //leftNormalizedImage = cv::Mat(image->height, image->width, CV_16UC1);
-            leftJpegImage = cv::Mat(image->height, image->width, CV_8UC3);;
+            //leftJpegImage = cv::Mat(image->height, image->width, CV_8UC3);;
             //cv::normalize(leftImage,leftNormalizedImage,0, 255,cv::NORM_MINMAX);
 
             //cv::cvtColor(leftImage,leftColorImage,cv::COLOR_BayerRG2BGR,0);
@@ -200,7 +202,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
 
             //cv::imwrite("foo.tif",leftColorImage);
             //leftColorImage.convertTo(dst,CV_8UC3,0.003891051); // 1/257 to get the full range
-            leftColorImage.convertTo(leftJpegImage,CV_8UC3,0.0625); // 1/16 to get the full range
+            //leftColorImage.convertTo(leftJpegImage,CV_8UC3,0.0625); // 1/16 to get the full range
 
 
             leftImageToPublish.width = image->width;
@@ -209,7 +211,8 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             leftImageToPublish.data.resize((uint32_t)leftImageToPublish.size);
             leftImageToPublish.pixelformat = image::image_t::PIXEL_FORMAT_BGR;
             leftImageToPublish.utime =image->utime;
-            std::copy(leftJpegImage.datastart, leftJpegImage.datastart +  leftImageToPublish.size, leftImageToPublish.data.begin());
+            //std::copy(leftJpegImage.datastart, leftJpegImage.datastart +  leftImageToPublish.size, leftImageToPublish.data.begin());
+            std::copy(leftColorImage.datastart, leftColorImage.datastart +  leftImageToPublish.size, leftImageToPublish.data.begin());
             int success = myLcm.publish("LeftColor",&leftImageToPublish);
 
 
@@ -232,13 +235,15 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
         {
             whichCamera = 1;
             rightTime = image->utime;
-            workingImage = cv::Mat(image->height, image->width, CV_16UC1, (void *)image->data.data());
+            //workingImage = cv::Mat(image->height, image->width, CV_16UC1, (void *)image->data.data());
+            workingImage = cv::Mat(image->height, image->width, CV_8UC1, (void *)image->data.data());
             rightImage = workingImage.clone();
 
 
-            rightColorImage = cv::Mat(image->height, image->width, CV_16UC3);
+            rightColorImage = cv::Mat(image->height, image->width, CV_8UC3);
+           // rightColorImage = cv::Mat(image->height, image->width, CV_16UC3);
             //rightNormalizedImage = cv::Mat(image->height, image->width, CV_16UC1);
-            rightJpegImage = cv::Mat(image->height, image->width, CV_8UC3);;
+           // rightJpegImage = cv::Mat(image->height, image->width, CV_8UC3);;
             //cv::normalize(rightImage,rightNormalizedImage,0, 255,cv::NORM_MINMAX);
 
             //cv::cvtColor(rightImage,rightColorImage,cv::COLOR_BayerRG2BGR,0);
@@ -255,7 +260,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             //wb = cv::xphoto::createLearningBasedWB();
 
             //wb->balanceWhite(rightColorImage,rightColorImage);
-            rightColorImage.convertTo(rightJpegImage,CV_8UC3,0.0625); // 1/16 to get the full range
+            //rightColorImage.convertTo(rightJpegImage,CV_8UC3,0.0625); // 1/16 to get the full range
 
             rightImageToPublish.width = image->width;
             rightImageToPublish.height = image->height;
@@ -263,7 +268,8 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             rightImageToPublish.data.resize((uint32_t)rightImageToPublish.size);
             rightImageToPublish.pixelformat = image::image_t::PIXEL_FORMAT_BGR;
             rightImageToPublish.utime =image->utime;
-            std::copy(rightJpegImage.datastart, rightJpegImage.datastart +  rightImageToPublish.size , rightImageToPublish.data.begin());
+           // std::copy(rightJpegImage.datastart, rightJpegImage.datastart +  rightImageToPublish.size , rightImageToPublish.data.begin());
+            std::copy(rightColorImage.datastart, rightColorImage.datastart +  rightImageToPublish.size , rightImageToPublish.data.begin());
             //std::string theTopic("RightColor");
             int success = myLcm.publish("RightColor",&rightImageToPublish);
 
@@ -409,7 +415,8 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                                 */
                     snprintf(imageName,767,"%s/%s",theDataDir,imageTimeString);
 
-                    int theImageWidthBytes = image->width * 4;
+                    //int theImageWidthBytes = image->width * 4;
+                    int theImageWidthBytes = image->width * 2;
                     int stereoTiffSuccess = 0;
                     TIFF *out= TIFFOpen(imageName, "w");
                     if(out)
@@ -417,7 +424,8 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                             TIFFSetField (out, TIFFTAG_IMAGEWIDTH, image->width*2);  // set the width of the image
                             TIFFSetField(out, TIFFTAG_IMAGELENGTH, image->height);    // set the height of the image
                             TIFFSetField(out, TIFFTAG_SAMPLESPERPIXEL, 1);   // set number of channels per pixel
-                            TIFFSetField(out, TIFFTAG_BITSPERSAMPLE, 16);    // set the size of the channels
+                            //TIFFSetField(out, TIFFTAG_BITSPERSAMPLE, 16);    // set the size of the channels
+                            TIFFSetField(out, TIFFTAG_BITSPERSAMPLE, 8);    // set the size of the channels
                             TIFFSetField(out, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);    // set the origin of the image.
                             //   Some other essential fields to set that you do not have to understand for now.
                             TIFFSetField(out, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
@@ -534,7 +542,8 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                                       bool jpgWriteResult;
                                       if(0 == cameraNumber)
                                          {
-                                            jpgWriteResult = cv::imwrite(jpgImageName,leftJpegImage);
+                                            //jpgWriteResult = cv::imwrite(jpgImageName,leftJpegImage);
+                                            jpgWriteResult = cv::imwrite(jpgImageName,leftColorImage);
                                             /*cv::namedWindow("left");
                                                          cv::imshow("lefts",leftColorImage);
                                                            cv::waitKey(0);
@@ -542,7 +551,8 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                                          }
                                       else
                                          {
-                                            jpgWriteResult = cv::imwrite(jpgImageName,rightJpegImage);
+                                            //jpgWriteResult = cv::imwrite(jpgImageName,rightJpegImage);
+                                            jpgWriteResult = cv::imwrite(jpgImageName,rightColorImage);
                                          }
                                       //printf(" wrote %s\n",jpgImageName);
                                       if(jpgWriteResult)

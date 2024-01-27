@@ -143,15 +143,15 @@ void *simulationThread (void *)
     cv::Mat  leftImage;
     cv::Mat  rightImage;
 
-    leftImage.create(image.rows, image.cols/2, CV_16UC1);
-    rightImage.create(image.rows, image.cols/2, CV_16UC1);
+    leftImage.create(image.rows, image.cols/2, CV_8UC1);
+    rightImage.create(image.rows, image.cols/2, CV_8UC1);
 
     for(int j = 0; j < image.rows; j++)
         {
             for (int k = 0; k < image.cols/2; k++)
             {
-                leftImage.at<unsigned short>(j,k) = image.at<unsigned short>(j,k)/16.0;
-                rightImage.at<unsigned short>(j,k) = image.at<unsigned short>(j,k + image.cols/2)/16.0;
+                leftImage.at<unsigned short>(j,k) = image.at<unsigned short>(j,k);
+                rightImage.at<unsigned short>(j,k) = image.at<unsigned short>(j,k + image.cols/2);
             }
         }
 
@@ -159,7 +159,7 @@ void *simulationThread (void *)
     image::image_t rightImageToPublish;
     leftImageToPublish.width = (int32_t)leftImage.cols;
     leftImageToPublish.height = (int32_t)leftImage.rows;
-    leftImageToPublish.size = (int32_t)(leftImageToPublish.width * leftImageToPublish.height * 2);
+    leftImageToPublish.size = (int32_t)(leftImageToPublish.width * leftImageToPublish.height);
     leftImageToPublish.pixelformat = image::image_t::PIXEL_FORMAT_GRAY;
     leftImageToPublish.data.resize((uint32_t)leftImageToPublish.size);
 
@@ -171,7 +171,7 @@ void *simulationThread (void *)
 
     rightImageToPublish.width = (int32_t)rightImage.cols;
     rightImageToPublish.height = (int32_t)rightImage.rows;
-    rightImageToPublish.size = (int32_t)(rightImageToPublish.width * rightImageToPublish.height * 2);
+    rightImageToPublish.size = (int32_t)(rightImageToPublish.width * rightImageToPublish.height);
     rightImageToPublish.pixelformat = image::image_t::PIXEL_FORMAT_GRAY;
     rightImageToPublish.data.resize((uint32_t)rightImageToPublish.size);
 

@@ -74,6 +74,7 @@ SOURCES += \
     nmea.cpp \
     sensorThread.cpp \
     simulationThread.cpp \
+    spartanThread.cpp \
     vimc.cpp \
     vimcBusThread.cpp \
     vimcThread.cpp \
@@ -91,6 +92,7 @@ HEADERS += \
     nmea.h \
     sensorThread.h \
     simulationThread.h \
+    spartanThread.h \
     vimc.h \
     vimcBusThread.h \
     vimcThread.h \
