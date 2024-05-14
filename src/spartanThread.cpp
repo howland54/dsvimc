@@ -148,6 +148,14 @@ spartanThread (void *)
                   case WPOS: // got a position message
                      {
                         gps_t *theGPS = (gps_t  *) data;
+                        if( 80.0 < fabs(theGPS->latitude))
+                           {
+                              break;
+                           }
+                        if(fabs(theGPS->longitude) > 180.0)
+                           {
+                              break;
+                           }
                         currentGPS.latitude = theGPS->latitude;
                         currentGPS.longitude = theGPS->longitude;
                         break;
@@ -184,7 +192,7 @@ spartanThread (void *)
                                                    }
                                                 else
                                                    {
-
+                                                      fprintf(stderr, "parse error on Sparton PSPA\n");
                                                    }
 
                                              }
@@ -242,9 +250,13 @@ spartanThread (void *)
                                                    }
                                                 else
                                                    {
-
-                                                   }
+                                                      fprintf(stderr, "parse error from Sparton AHRS HCXDR\n");                                               }
                                              }
+                                       }
+                                    else
+                                       {
+                                          fprintf(stderr, "checksum error from Sparton AHRS!\n");
+                                          break;
                                        }
                                  }
                            }

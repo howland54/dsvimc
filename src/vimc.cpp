@@ -106,7 +106,7 @@ main (int argc, char *argv[])
 
     nOfAvtCameras = 0;
     thisIsASimulation = false;
-    bool useSparton = true;
+    bool useSparton = false;
 
     fprintf (stderr, "File %s compiled on %s at %s by Jonathan C. Howland\n", __FILE__, __DATE__, __TIME__);
 
@@ -220,7 +220,7 @@ main (int argc, char *argv[])
                 }
 
             stereoLogging = (bool)iniFile->readInt("GENERAL","LOG_STEREO",true);
-            useSparton = (bool)iniFile->readInt("GENERAL","USE_SPARTON",1);
+            useSparton = (bool)iniFile->readInt("GENERAL","USE_SPARTON",0);
             iniFile->closeIni();
         }
 

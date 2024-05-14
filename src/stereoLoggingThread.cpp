@@ -196,8 +196,9 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             //leftJpegImage = cv::Mat(image->height, image->width, CV_8UC3);;
             //cv::normalize(leftImage,leftNormalizedImage,0, 255,cv::NORM_MINMAX);
 
-            //cv::cvtColor(leftImage,leftColorImage,cv::COLOR_BayerRG2BGR,0);
             cv::cvtColor(leftImage,leftColorImage,cv::COLOR_BayerBG2BGR,0);
+            // this change made 17 April 24 to accomodate new camera
+            //cv::cvtColor(leftImage,leftColorImage,cv::COLOR_BayerBG2BGR,0);
             //std::vector<int> tags = {TIFFTAG_COMPRESSION, COMPRESSION_NONE,cv::IMREAD_ANYDEPTH };
 
             //cv::imwrite("foo.tif",leftColorImage);
@@ -246,8 +247,8 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
            // rightJpegImage = cv::Mat(image->height, image->width, CV_8UC3);;
             //cv::normalize(rightImage,rightNormalizedImage,0, 255,cv::NORM_MINMAX);
 
-            //cv::cvtColor(rightImage,rightColorImage,cv::COLOR_BayerRG2BGR,0);
             cv::cvtColor(rightImage,rightColorImage,cv::COLOR_BayerBG2BGR,0);
+            //cv::cvtColor(rightImage,rightColorImage,cv::COLOR_BayerBG2BGR,0);
             //vector<cv::Mat> channels;
             //cv::split(rightColorImage,channels);
             //cv::normalize(channels[2], channels[2], 0, 4096, cv::NORM_MINMAX);

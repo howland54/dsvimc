@@ -150,8 +150,8 @@ void *simulationThread (void *)
         {
             for (int k = 0; k < image.cols/2; k++)
             {
-                leftImage.at<unsigned short>(j,k) = image.at<unsigned short>(j,k);
-                rightImage.at<unsigned short>(j,k) = image.at<unsigned short>(j,k + image.cols/2);
+                leftImage.at<unsigned char>(j,k) = image.at<unsigned char>(j,k);
+                rightImage.at<unsigned char>(j,k) = image.at<unsigned char>(j,k + image.cols/2);
             }
         }
 
