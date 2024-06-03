@@ -43,7 +43,7 @@
 #include "sensorThread.h"
 #include "msNetThread.h"
 #include "simulationThread.h"
-#include "spartanThread.h"
+//#include "spartanThread.h"
 
 #include "lcmHandleThread.h"
 
@@ -252,7 +252,7 @@ main (int argc, char *argv[])
     make_thread_table_entry (FATHOMETER_THREAD, "FATHOMETER_THREAD", nio_thread, (void *)FATHOMETER_THREAD, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
     make_thread_table_entry (GPS_THREAD, "GPS_THREAD", nio_thread, (void *)GPS_THREAD, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
     make_thread_table_entry (ALTIMETER_THREAD, "ALTIMETER_THREAD", nio_thread, (void *)ALTIMETER_THREAD, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
-
+#if 0
     if(!useSparton)
       {
           make_thread_table_entry (MS_NET_THREAD,"MS_NET_THREAD",msNetThread, (void *) MS_NET_THREAD, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
@@ -263,6 +263,10 @@ main (int argc, char *argv[])
           make_thread_table_entry (SPARTON_THREAD,"SPARTON_THREAD",spartanThread, (void *) SPARTON_THREAD, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
           make_thread_table_entry (SPARTON_NIO_THREAD, "SPARTON_NIO_THREAD", nio_thread, (void *) SPARTON_NIO_THREAD, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
        }
+#else
+    make_thread_table_entry (MS_NET_THREAD,"MS_NET_THREAD",msNetThread, (void *) MS_NET_THREAD, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
+    make_thread_table_entry (MS_NIO_THREAD, "MS_NIO_THREAD", nio_thread, (void *) MS_NIO_THREAD, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
+#endif
     if(thisIsASimulation)
         {
             make_thread_table_entry (SIMULATION_THREAD, "SIMULATION_THREAD", simulationThread, (void *)NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);

@@ -70,6 +70,7 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
 
         case SPI:			// recieved a SPI (Status Ping) message
             break;
+#if 0
         case PPI:  // recieved a timer prompt to send position to the sparton thread
           {
              break;
@@ -78,7 +79,7 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
              myGPS.longitude = sensor->vesselPosition.longitude;
              msg_send(SPARTON_THREAD, SENSOR_THREAD, WPOS, sizeof(myGPS), &myGPS);
           }
-
+#endif
 
         case BYE:  // received a bye message--time to give up the ghost--
             {
@@ -410,9 +411,9 @@ void *sensorThread (void *)
             abort ();
 
         }
-
+#if 0
     spartanPosTimer = launch_timer_new(POSITION_PROMPT_INTERVAL, -1, SENSOR_THREAD,  PPI);
-
+#endif
 
 
     // loop forever

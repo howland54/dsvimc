@@ -356,7 +356,7 @@ VmbErrorType setGain(int theCameraNumber, AVT::VmbAPI::CameraPtr theAVTCamera,do
          return res;
       }
    // make sure the gain is an integral value (albeit contained in a double)
-   int theRoundGain = (int)round(theGain);
+   int theRoundGain = (int)round(theGain*10.0);
    res = SP_ACCESS( pGainFeature )->SetValue (theRoundGain );
    if( VmbErrorSuccess != res )
       {
@@ -730,6 +730,7 @@ void *vimcThread (void *threadNumber)
                               imageParameter.key = "GAIN";
                               AVT::VmbAPI::FeaturePtr pGainFeature;
                               VmbErrorType res = SP_ACCESS( theAVTCamera )->GetFeatureByName( "GainRaw", pGainFeature );
+                              //VmbErrorType res = SP_ACCESS( theAVTCamera )->GetFeatureByName( "Gain", pGainFeature );
                               if( VmbErrorSuccess == res )
                                  {
                                     long long theGainActual;
