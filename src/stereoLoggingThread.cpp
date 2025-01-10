@@ -29,7 +29,9 @@
 #include "../../dsvimlib/include/imageTalk.h"		/* jasontalk protocol and structures */
 #include "../../dsvimlib/include/msg_util.h"		/* utility functions for messaging */
 #include "lcmHandleThread.h"
+
 #include "stereoLoggingThread.h"
+#include "color_constancy.hpp"
 
 /* posix header files */
 #define  POSIX_SOURCE 1
@@ -179,6 +181,9 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
     image::image_t leftImageToPublish;
     image::image_t rightImageToPublish;
     int whichCamera = 0;
+
+    color_correction::gray_world b1;
+
     if(channel == avtCameras[leftCameraID].lcmChannelName)
         {
             whichCamera = 0;
@@ -204,7 +209,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             //cv::imwrite("foo.tif",leftColorImage);
             //leftColorImage.convertTo(dst,CV_8UC3,0.003891051); // 1/257 to get the full range
             //leftColorImage.convertTo(leftJpegImage,CV_8UC3,0.0625); // 1/16 to get the full range
-
+            leftJpegImage = b1.run2(leftColorImage,1,2);
 
             leftImageToPublish.width = image->width;
             leftImageToPublish.height = image->height;
@@ -213,7 +218,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             leftImageToPublish.pixelformat = image::image_t::PIXEL_FORMAT_BGR;
             leftImageToPublish.utime =image->utime;
             //std::copy(leftJpegImage.datastart, leftJpegImage.datastart +  leftImageToPublish.size, leftImageToPublish.data.begin());
-            std::copy(leftColorImage.datastart, leftColorImage.datastart +  leftImageToPublish.size, leftImageToPublish.data.begin());
+            std::copy(leftJpegImage.datastart, leftJpegImage.datastart +  leftImageToPublish.size, leftImageToPublish.data.begin());
             int success = myLcm.publish("LeftColor",&leftImageToPublish);
 
 
@@ -248,6 +253,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             //cv::normalize(rightImage,rightNormalizedImage,0, 255,cv::NORM_MINMAX);
 
             cv::cvtColor(rightImage,rightColorImage,cv::COLOR_BayerBG2BGR,0);
+            rightJpegImage = b1.run2(rightColorImage,1,2);
             //cv::cvtColor(rightImage,rightColorImage,cv::COLOR_BayerBG2BGR,0);
             //vector<cv::Mat> channels;
             //cv::split(rightColorImage,channels);
@@ -270,7 +276,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             rightImageToPublish.pixelformat = image::image_t::PIXEL_FORMAT_BGR;
             rightImageToPublish.utime =image->utime;
            // std::copy(rightJpegImage.datastart, rightJpegImage.datastart +  rightImageToPublish.size , rightImageToPublish.data.begin());
-            std::copy(rightColorImage.datastart, rightColorImage.datastart +  rightImageToPublish.size , rightImageToPublish.data.begin());
+            std::copy(rightJpegImage.datastart, rightJpegImage.datastart +  rightImageToPublish.size , rightImageToPublish.data.begin());
             //std::string theTopic("RightColor");
             int success = myLcm.publish("RightColor",&rightImageToPublish);
 
@@ -400,9 +406,9 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
 
 
                     //int numChars = makeTimeString(thePairTime,imageTimeString,recordingPrefix, "tif");
-                    int numChars = makeTimeString(thePairTime,year, month, day, hour,minute, secs, milliseconds, imageTimeString,recordingPrefix, "tif");
-                    cv::Mat stereoImage = cv::Mat(image->height, image->width*2, CV_16UC1);
-                    cv::hconcat(leftImage*16,rightImage*16,stereoImage);
+                    int numChars = makeTimeString(thePairTime,year, month+1, day, hour,minute, secs, milliseconds, imageTimeString,recordingPrefix, "tif");
+                    cv::Mat stereoImage = cv::Mat(image->height, image->width*2, CV_8UC1);
+                    cv::hconcat(leftImage,rightImage,stereoImage);
 
                     /*double minVal;
                                 double maxVal;
@@ -537,14 +543,14 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                                       char jpgImageTimeString[512];
                                       snprintf(jpgPrefix,511,"%s%s",avtCameras[cameraNumber].jpgPrefix,recordingPrefix);
                                       //int numChars = makeTimeString(thePairTime,jpgImageTimeString,jpgPrefix, "jpg");
-                                      int numChars = makeTimeString(thePairTime,year, month, day, hour, minute, secs, milliseconds, jpgImageTimeString,jpgPrefix, "jpg");
+                                      int numChars = makeTimeString(thePairTime,year, month+1, day, hour, minute, secs, milliseconds, jpgImageTimeString,jpgPrefix, "jpg");
 
                                       snprintf(jpgImageName,767,"%s/%s",&(theJPGDataDir[cameraNumber][0]),jpgImageTimeString);
                                       bool jpgWriteResult;
                                       if(0 == cameraNumber)
                                          {
                                             //jpgWriteResult = cv::imwrite(jpgImageName,leftJpegImage);
-                                            jpgWriteResult = cv::imwrite(jpgImageName,leftColorImage);
+                                            jpgWriteResult = cv::imwrite(jpgImageName,leftJpegImage);
                                             /*cv::namedWindow("left");
                                                          cv::imshow("lefts",leftColorImage);
                                                            cv::waitKey(0);
@@ -553,7 +559,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                                       else
                                          {
                                             //jpgWriteResult = cv::imwrite(jpgImageName,rightJpegImage);
-                                            jpgWriteResult = cv::imwrite(jpgImageName,rightColorImage);
+                                            jpgWriteResult = cv::imwrite(jpgImageName,rightJpegImage);
                                          }
                                       //printf(" wrote %s\n",jpgImageName);
                                       if(jpgWriteResult)

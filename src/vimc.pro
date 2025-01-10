@@ -68,6 +68,7 @@ SOURCES += \
     AVTAttribute.cpp \
     CameraObserver.cpp \
     FrameObserver.cpp \
+    color_constancy.cpp \
     lcmHandleThread.cpp \
     microstrain.cpp \
     msNetThread.cpp \
@@ -84,6 +85,7 @@ SOURCES += \
 HEADERS += \
     CameraObserver.h \
     FrameObserver.h \
+    color_constancy.hpp \
     lcmHandleThread.h \
     lcmRecieveThread.h \
     microstrain.h \
