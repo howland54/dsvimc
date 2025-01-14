@@ -66,6 +66,7 @@ VimbaSystem          *vSystem;
 
 int   nOfAvtCameras;
 bool    thisIsASimulation;
+char *metadataSuffix;
 
 
 lcm::LCM myLcm("udpm://239.255.76.67:7667?ttl=0");
@@ -219,6 +220,7 @@ main (int argc, char *argv[])
                         }
                 }
 
+            metadataSuffix = iniFile->readString("GENERAL","METADATA_FILE_SUFFIX", "MET");
             stereoLogging = (bool)iniFile->readInt("GENERAL","LOG_STEREO",true);
             useSparton = (bool)iniFile->readInt("GENERAL","USE_SPARTON",0);
             iniFile->closeIni();

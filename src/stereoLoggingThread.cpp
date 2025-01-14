@@ -44,6 +44,7 @@ int     jpgCount[2];
 char *imgRoot;
 bool  saveStereo;
 extern int   nOfAvtCameras;
+extern char *metadataSuffix;
 
 long int leftTime;
 long int rightTime;
@@ -380,7 +381,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                                     char dataFileName[512];
                                     if(makeTenMinuteLogFiles)
                                         {
-                                            snprintf(dataFileName,511,"%s/%04d%02d%02d_%02d%02d.img",imgRoot,year,month+1,day,hour,trialTenMinute);
+                                            snprintf(dataFileName,511,"%s/%04d%02d%02d_%02d%02d.%s",imgRoot,year,month+1,day,hour,trialTenMinute,metadataSuffix);
                                             tenMinuteLogFile = fopen(dataFileName,"wa");
                                         }
                                     int logLen = snprintf(loggingRecord,2047,"SYS %04d/%02d/%02d %02d:%02d:%02d.%03d MKDIR %s RETCODE %d",year,month+1,day,hour,minute,gmtime_time.tm_sec,ftime_time.millitm,theDataDir,directoryRetCode);
