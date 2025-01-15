@@ -177,7 +177,7 @@ main (int argc, char *argv[])
                             char *scratchPrefix = iniFile->readString(cameraLabel,"FILENAME_PREFIX",cameraLabel);
                             avtCameras[nOfAvtCameras].filenamePrefix = strdup(scratchPrefix);
                             free( scratchPrefix);
-                            avtCameras[nOfAvtCameras].saveImages = (bool)iniFile->readInt(cameraLabel,"SAVE_IMAGES",true);
+                            avtCameras[nOfAvtCameras].saveImages = (bool)iniFile->readInt(cameraLabel,"SAVE_IMAGES",0);
                             scratchPrefix = iniFile->readString(cameraLabel,"SAVE_DIRECTORY_ROOT","./");
                             avtCameras[nOfAvtCameras].saveDirectoryRoot = strdup(scratchPrefix);
                             free(scratchPrefix);
