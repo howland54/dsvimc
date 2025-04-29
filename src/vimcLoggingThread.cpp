@@ -211,7 +211,9 @@ static int logOpenAsciiLog_file (logging_t * log)
 
    // call time() and localtime for time
    current_time = time (NULL);
-   tm = localtime (&current_time);
+
+   // should this be gmtime?
+   tm = gmtime(&current_time);
  #ifdef DEBUG_LOGGING
    printf ("in open log file, last hour = %d\n", log->last_hour);
    printf ("current hour = %d\n", tm->tm_hour);

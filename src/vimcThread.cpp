@@ -162,6 +162,68 @@ VmbErrorType configureCamera(avtCameraT *mycamera, AVT::VmbAPI::CameraPtr theAVT
       }
 
    // now check on a few key features
+
+   if(mycamera->desiredSettings.autoGain)
+       {
+       AVT::VmbAPI::FeaturePtr pGainFeature;
+       VmbErrorType res = SP_ACCESS( theCamera )->GetFeatureByName( "GainAuto", pGainFeature );
+       if( res == VmbErrorSuccess )
+          {
+            res = SP_ACCESS( pGainFeature )->SetValue ( "Continuous" );
+            if( VmbErrorSuccess != res )
+              {
+                 printf(" could not set auto gain!\n");
+              }
+            }
+       }
+   else
+   {
+       AVT::VmbAPI::FeaturePtr pGainFeature;
+       VmbErrorType res = SP_ACCESS( theCamera )->GetFeatureByName( "GainAuto", pGainFeature );
+       if( VmbErrorSuccess == res )
+          {
+            res = SP_ACCESS( pGainFeature )->SetValue ( "Off" );
+          }
+       res = SP_ACCESS( theCamera )->GetFeatureByName( "GainRaw", pGainFeature );
+       if( VmbErrorSuccess == res )
+          {
+
+            // make sure the gain is an integral value (albeit contained in a double)
+           int theRoundGain = (int)round(mycamera->desiredSettings.theGain*10.0);
+           res = SP_ACCESS( pGainFeature )->SetValue (theRoundGain );
+
+          }
+
+   }
+   if(mycamera->desiredSettings.autoShutter)
+       {
+           AVT::VmbAPI::FeaturePtr pExposureFeature;
+           VmbErrorType res = SP_ACCESS( theCamera )->GetFeatureByName( "ExposureAuto", pExposureFeature );
+           if( VmbErrorSuccess == res )
+              {
+                res = SP_ACCESS( pExposureFeature )->SetValue ( "Continuous" );
+              }
+
+       }
+   else
+       {
+           AVT::VmbAPI::FeaturePtr pExposureFeature;
+           res = SP_ACCESS( theCamera )->GetFeatureByName( "ExposureAuto", pExposureFeature );
+              if( VmbErrorSuccess == res )
+                  {
+                    res = SP_ACCESS( pExposureFeature )->SetValue ( "Off" );
+                  }
+              if( VmbErrorSuccess == res )
+                  {
+                     res = SP_ACCESS( theCamera )->GetFeatureByName( "ExposureTimeAbs", pExposureFeature );
+                     if(VmbErrorSuccess == res)
+                         {
+                            res = SP_ACCESS( pExposureFeature )->SetValue ( mycamera->desiredSettings.theShutter );
+                         }
+                  }
+       }
+
+
    VmbInt64_t lFreq;
    if( VmbErrorSuccess == SP_ACCESS( theCamera )->GetFeatureByName( "GevTimestampTickFrequency", pCommandFeature ) )
       {
@@ -738,11 +800,12 @@ void *vimcThread (void *threadNumber)
                                     //printf(" res %d\n",res);
                                     if( VmbErrorSuccess == res )
                                        {
-                                          avtCameras[theCameraNumber].actualSettings.theGain = (double)theGainActual;
-                                          imageParameter.value = std::to_string(theGainActual);
+                                          double    doubleGain = ((double)theGainActual)/10.0;
+                                          avtCameras[theCameraNumber].actualSettings.theGain = doubleGain;
+                                          imageParameter.value = std::to_string(doubleGain);
                                           imageParameter.cameraNumber = theCameraNumber;
                                           myLcm.publish("M_STATUS_PARAMETERS", &imageParameter);
-                                          //printf(" gain = %lf\n",(double)theGainActual);
+                                          //printf(" gain from camera = %lf\n",doubleGain);
 
                                        }
                                  }

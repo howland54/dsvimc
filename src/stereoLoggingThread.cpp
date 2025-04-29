@@ -1,7 +1,10 @@
 /* ----------------------------------------------------------------------
 
    ---------------------------------------------------------------------- */
-
+/* 26 March 2025 todo
+ *
+ * implement GUI msg and msg to turn off constancy
+ */
 /* ansii c headers */
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,7 +13,7 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <ctime>
-
+#include <unistd.h>
 #include <time.h>
 #include <sys/timeb.h>
 #include <sys/stat.h>
@@ -29,8 +32,10 @@
 #include "../../dsvimlib/include/imageTalk.h"		/* jasontalk protocol and structures */
 #include "../../dsvimlib/include/msg_util.h"		/* utility functions for messaging */
 #include "lcmHandleThread.h"
+#include "constancyThread.h"
 #include "stereoLoggingThread.h"
-
+#include "color_constancy.hpp"
+#include "jpegThread.h"
 /* posix header files */
 #define  POSIX_SOURCE 1
 
@@ -41,13 +46,22 @@ extern avtCameraT  avtCameras[MAX_N_OF_CAMERAS];
 int     jpgCount[2];
 char *imgRoot;
 bool  saveStereo;
+extern bool useConstancy;
 extern int   nOfAvtCameras;
+extern char *metadataSuffix;
 
 long int leftTime;
 long int rightTime;
 bool  makeTenMinuteLogFiles;
 
+jpegSave_t  jpegToSave[2];
+pthread_mutex_t jpegMutex[2];
+
+
 bool stereoWriteResult;
+
+static float gwml, gwma, gwmb;
+ long int leftCount, rightCount;
 
 //int makeTimeString (double total_secs, char *str, char *prefix, char *suffix);
 int makeTimeString (double total_secs, int year, int month, int monthDay, int hour, int min, int seconds, int milliseconds, char *str, char *prefix, char *suffix);
@@ -59,21 +73,12 @@ static int lastHour;
 static int lastTenMinute;
 static int lastDayOfYear;
 
-typedef struct
-{
-    int lastYear;
-    int lastMonth;
-    int lastDay;
-    int lastHour;
-    int lastTenMinute;
-    int lastDayOfYear;
-} lastJPGsT;
 
-static lastJPGsT lastJPEGS[2];
+
 
 static char theDataDir[512];
-static char theJPGDataDir[2][512];
 
+int constancyCount;
 
 
 
@@ -103,8 +108,8 @@ static cv::Mat  workingImage;
 
 cv::Mat  leftColorImage;
 cv::Mat  rightColorImage;
-cv::Mat  leftNormalizedImage;
-cv::Mat  rightNormalizedImage;
+cv::Mat  constancyImage;
+pthread_mutex_t   constancyMutex;
 cv::Mat dst;
 
 cv::Mat leftJpegImage;
@@ -119,6 +124,7 @@ char    *attitudeStereoChannelName;
 
 
 char *recordingPrefix;
+pthread_mutex_t illuminationMutex;
 
 void recordingParameterCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,const image::image_parameter_t *image, State *user)
 {
@@ -174,14 +180,26 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
     needANewJPGDirectory[1] = false;
     char description[1024];
     char loggingRecord[2048];
+    constancyIlluminationVector_t newVector;
+
 
     theStereoEvent.imageState = 0;
     image::image_t leftImageToPublish;
     image::image_t rightImageToPublish;
     int whichCamera = 0;
+    bool sendToConstancyThread = false;
+
+    color_correction::gray_world b1;
+    long int totalImageCount = leftCount + rightCount;
+    if((totalImageCount< 10) && (useConstancy))
+       {
+          sendToConstancyThread = true;
+       }
+
     if(channel == avtCameras[leftCameraID].lcmChannelName)
         {
             whichCamera = 0;
+
             leftTime = image->utime;
             //workingImage = cv::Mat(image->height, image->width, CV_16UC1, (void *)image->data.data());
             workingImage = cv::Mat(image->height, image->width, CV_8UC1, (void *)image->data.data());
@@ -197,6 +215,25 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             //cv::normalize(leftImage,leftNormalizedImage,0, 255,cv::NORM_MINMAX);
 
             cv::cvtColor(leftImage,leftColorImage,cv::COLOR_BayerBG2BGR,0);
+            if((totalImageCount % constancyCount ) == 0)
+                {
+                    //b1.preprocess(leftColorImage,1,2,&gwml, &gwma, &gwmb);
+                  // check on the mutex constancyMutex
+                  pthread_mutex_lock(&constancyMutex);
+                  constancyImage = leftColorImage;
+                  pthread_mutex_unlock(&constancyMutex);
+                  //printf("sending wcon for left , total count = %d left = %d right = %d\n",totalImageCount,leftCount,rightCount);
+                  msg_send(CONSTANCY_THREAD, STEREO_LOGGING_THREAD,  WCON, 0,NULL);
+                }
+             leftCount++;
+
+             pthread_mutex_lock(&illuminationMutex);
+             newVector.ml = theIlluminationVector.ml;
+             newVector.ma = theIlluminationVector.ma;
+             newVector.mb = theIlluminationVector.mb;
+             newVector.validData = theIlluminationVector.validData;
+             pthread_mutex_unlock(&illuminationMutex);
+
             // this change made 17 April 24 to accomodate new camera
             //cv::cvtColor(leftImage,leftColorImage,cv::COLOR_BayerBG2BGR,0);
             //std::vector<int> tags = {TIFFTAG_COMPRESSION, COMPRESSION_NONE,cv::IMREAD_ANYDEPTH };
@@ -204,6 +241,20 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             //cv::imwrite("foo.tif",leftColorImage);
             //leftColorImage.convertTo(dst,CV_8UC3,0.003891051); // 1/257 to get the full range
             //leftColorImage.convertTo(leftJpegImage,CV_8UC3,0.0625); // 1/16 to get the full range
+
+            //struct timespec start,finish;
+            //clock_gettime(CLOCK_REALTIME,&start);
+             if(useConstancy && newVector.validData)
+                {
+                  leftJpegImage = b1.run3(leftColorImage,2,newVector.ml, newVector.ma, newVector.mb);
+                }
+             else
+                {
+                  leftJpegImage = leftColorImage;
+                }
+            //leftJpegImage = leftColorImage;
+            //clock_gettime(CLOCK_REALTIME,&finish);
+            //printf("elapsed time:  %ld\n", (finish.tv_sec* 1000000000 + finish.tv_nsec) - (start.tv_sec*1000000000 + start.tv_nsec));
 
 
             leftImageToPublish.width = image->width;
@@ -213,7 +264,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             leftImageToPublish.pixelformat = image::image_t::PIXEL_FORMAT_BGR;
             leftImageToPublish.utime =image->utime;
             //std::copy(leftJpegImage.datastart, leftJpegImage.datastart +  leftImageToPublish.size, leftImageToPublish.data.begin());
-            std::copy(leftColorImage.datastart, leftColorImage.datastart +  leftImageToPublish.size, leftImageToPublish.data.begin());
+            std::copy(leftJpegImage.datastart, leftJpegImage.datastart +  leftImageToPublish.size, leftImageToPublish.data.begin());
             int success = myLcm.publish("LeftColor",&leftImageToPublish);
 
 
@@ -235,6 +286,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
     else
         {
             whichCamera = 1;
+
             rightTime = image->utime;
             //workingImage = cv::Mat(image->height, image->width, CV_16UC1, (void *)image->data.data());
             workingImage = cv::Mat(image->height, image->width, CV_8UC1, (void *)image->data.data());
@@ -248,6 +300,33 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             //cv::normalize(rightImage,rightNormalizedImage,0, 255,cv::NORM_MINMAX);
 
             cv::cvtColor(rightImage,rightColorImage,cv::COLOR_BayerBG2BGR,0);
+            if((totalImageCount % constancyCount ) == 0)
+                {
+                    //b1.preprocess(rightColorImage,1,2,&gwml, &gwma, &gwmb);
+                  constancyImage = rightColorImage;
+                  //printf("sending wcon for right , total count = %d left = %d right = %d\n",totalImageCount,leftCount,rightCount);
+                  msg_send(CONSTANCY_THREAD, STEREO_LOGGING_THREAD,  WCON, 0,NULL);
+                }
+
+            rightCount++;
+
+            pthread_mutex_lock(&illuminationMutex);
+            newVector.ml = theIlluminationVector.ml;
+            newVector.ma = theIlluminationVector.ma;
+            newVector.mb = theIlluminationVector.mb;
+            newVector.validData = theIlluminationVector.validData;
+            pthread_mutex_unlock(&illuminationMutex);
+
+            if(useConstancy && newVector.validData)
+               {
+                 rightJpegImage = b1.run3(rightColorImage,2,newVector.ml, newVector.ma, newVector.mb);
+               }
+            else
+               {
+                 rightJpegImage = rightColorImage;
+               }
+            //rightJpegImage = rightColorImage;
+
             //cv::cvtColor(rightImage,rightColorImage,cv::COLOR_BayerBG2BGR,0);
             //vector<cv::Mat> channels;
             //cv::split(rightColorImage,channels);
@@ -270,7 +349,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             rightImageToPublish.pixelformat = image::image_t::PIXEL_FORMAT_BGR;
             rightImageToPublish.utime =image->utime;
            // std::copy(rightJpegImage.datastart, rightJpegImage.datastart +  rightImageToPublish.size , rightImageToPublish.data.begin());
-            std::copy(rightColorImage.datastart, rightColorImage.datastart +  rightImageToPublish.size , rightImageToPublish.data.begin());
+            std::copy(rightJpegImage.datastart, rightJpegImage.datastart +  rightImageToPublish.size , rightImageToPublish.data.begin());
             //std::string theTopic("RightColor");
             int success = myLcm.publish("RightColor",&rightImageToPublish);
 
@@ -374,7 +453,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                                     char dataFileName[512];
                                     if(makeTenMinuteLogFiles)
                                         {
-                                            snprintf(dataFileName,511,"%s/%04d%02d%02d_%02d%02d.img",imgRoot,year,month+1,day,hour,trialTenMinute);
+                                            snprintf(dataFileName,511,"%s/%04d%02d%02d_%02d%02d.%s",imgRoot,year,month+1,day,hour,trialTenMinute,metadataSuffix);
                                             tenMinuteLogFile = fopen(dataFileName,"wa");
                                         }
                                     int logLen = snprintf(loggingRecord,2047,"SYS %04d/%02d/%02d %02d:%02d:%02d.%03d MKDIR %s RETCODE %d",year,month+1,day,hour,minute,gmtime_time.tm_sec,ftime_time.millitm,theDataDir,directoryRetCode);
@@ -400,9 +479,9 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
 
 
                     //int numChars = makeTimeString(thePairTime,imageTimeString,recordingPrefix, "tif");
-                    int numChars = makeTimeString(thePairTime,year, month, day, hour,minute, secs, milliseconds, imageTimeString,recordingPrefix, "tif");
-                    cv::Mat stereoImage = cv::Mat(image->height, image->width*2, CV_16UC1);
-                    cv::hconcat(leftImage*16,rightImage*16,stereoImage);
+                    int numChars = makeTimeString(thePairTime,year, month+1, day, hour,minute, secs, milliseconds, imageTimeString,recordingPrefix, "tif");
+                    cv::Mat stereoImage = cv::Mat(image->height, image->width*2, CV_8UC1);
+                    cv::hconcat(leftImage,rightImage,stereoImage);
 
                     /*double minVal;
                                 double maxVal;
@@ -435,7 +514,6 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
 
 
 
-                            tsize_t linebytes =  theImageWidthBytes;     // length in memory of one row of pixel in the image.
                             unsigned char *buf = NULL;        // buffer used to store the row of pixel information for writing to file
 
 
@@ -488,7 +566,21 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                               {
                                 if(!(jpgCount[cameraNumber] % avtCameras[cameraNumber].jpgSkip))
                                    {
-
+                                      pthread_mutex_lock(&(jpegMutex[cameraNumber]));
+                                      jpegToSave[cameraNumber].day = day;
+                                      jpegToSave[cameraNumber].year = year;
+                                      jpegToSave[cameraNumber].hour = hour;
+                                      jpegToSave[cameraNumber].month = month;
+                                      jpegToSave[cameraNumber].minute = minute;
+                                      jpegToSave[cameraNumber].secs = secs;
+                                      jpegToSave[cameraNumber].milliseconds = milliseconds;
+                                      jpegToSave[cameraNumber].dayOfYear = dayOfYear;
+                                      strncpy(jpegToSave[cameraNumber].imageDescription,description, 2047);
+                                      jpegToSave[cameraNumber].cameraNumber = cameraNumber;
+                                      jpegToSave[cameraNumber].theImage = leftJpegImage;
+                                      pthread_mutex_unlock(&(jpegMutex[cameraNumber]));
+                                      msg_send(JPEG_THREAD, STEREO_LOGGING_THREAD, WJPG,sizeof(int),&cameraNumber);
+ #if 0
                                       if(dayOfYear != lastJPEGS[cameraNumber].lastDayOfYear)
                                          {
                                             needANewJPGDirectory[cameraNumber] = true;
@@ -537,14 +629,14 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                                       char jpgImageTimeString[512];
                                       snprintf(jpgPrefix,511,"%s%s",avtCameras[cameraNumber].jpgPrefix,recordingPrefix);
                                       //int numChars = makeTimeString(thePairTime,jpgImageTimeString,jpgPrefix, "jpg");
-                                      int numChars = makeTimeString(thePairTime,year, month, day, hour, minute, secs, milliseconds, jpgImageTimeString,jpgPrefix, "jpg");
+                                      int numChars = makeTimeString(thePairTime,year, month+1, day, hour, minute, secs, milliseconds, jpgImageTimeString,jpgPrefix, "jpg");
 
                                       snprintf(jpgImageName,767,"%s/%s",&(theJPGDataDir[cameraNumber][0]),jpgImageTimeString);
                                       bool jpgWriteResult;
                                       if(0 == cameraNumber)
                                          {
                                             //jpgWriteResult = cv::imwrite(jpgImageName,leftJpegImage);
-                                            jpgWriteResult = cv::imwrite(jpgImageName,leftColorImage);
+                                            jpgWriteResult = cv::imwrite(jpgImageName,leftJpegImage);
                                             /*cv::namedWindow("left");
                                                          cv::imshow("lefts",leftColorImage);
                                                            cv::waitKey(0);
@@ -553,7 +645,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                                       else
                                          {
                                             //jpgWriteResult = cv::imwrite(jpgImageName,rightJpegImage);
-                                            jpgWriteResult = cv::imwrite(jpgImageName,rightColorImage);
+                                            jpgWriteResult = cv::imwrite(jpgImageName,rightJpegImage);
                                          }
                                       //printf(" wrote %s\n",jpgImageName);
                                       if(jpgWriteResult)
@@ -564,6 +656,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                                             exifData["Exif.Image.ImageDescription"] = description;
                                             image->writeMetadata();
                                          }
+#endif
                                    }
                               }
                           jpgCount[cameraNumber]++;
@@ -712,6 +805,7 @@ void *stereoLoggingThread (void *)
     theStereoEvent.imageState = 3;
     jpgCount[0] = 0;
     jpgCount[1] = 0;
+    pthread_mutex_init(&constancyMutex, NULL);
 
     makeTenMinuteLogFiles = false;
 
@@ -733,6 +827,7 @@ void *stereoLoggingThread (void *)
         }
     else
         {
+            constancyCount = iniFile->readInt("GENERAL","CONSTANCY_COUNT",DEFAULT_CONSTANCY_COUNT);
             altimeterStereoChannelName = iniFile->readString("ALTIMETER","CHANNEL_NAME", "ALTIMETER");
             ctdStereoChannelName = iniFile->readString("CTD","CHANNEL_NAME","CTD");
             gpsStereoChannelName = iniFile->readString("GPS","CHANNEL_NAME","GPS");
@@ -783,7 +878,7 @@ void *stereoLoggingThread (void *)
                     char cameraLabel[32];
                     snprintf(cameraLabel,31,"CAMERA_%01d",cameraNumber + 1);
                     avtCameras[cameraNumber].doNotUseInStereoLogging = (bool)iniFile->readInt(cameraLabel,"CAMERA_BAD",0);
-                    avtCameras[cameraNumber].saveJPG = (bool)iniFile->readInt(cameraLabel,"STORE_JPG",0);
+                    avtCameras[cameraNumber].saveJPG = (bool)iniFile->readInt(cameraLabel,"STORE_JPG",1);
 
                     avtCameras[cameraNumber].jpgSkip = iniFile->readInt(cameraLabel,"JPEG_SKIP",1);
                     char *jpgSaveRoot = iniFile->readString(cameraLabel,"JPEG_SAVE_ROOT","./jpg");

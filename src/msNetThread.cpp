@@ -87,7 +87,6 @@ void * msNetThread (void *thread_num)
    // initialize a message queue for me
    // ------------------------------------------------------------
    msg_success = msg_queue_new(my_thread_num, "ms_thread");
-   char *device;
    if(msg_success != MSG_OK)
       {
          printf ("MS THREAD: Could not initialize queue, error is %s\n",

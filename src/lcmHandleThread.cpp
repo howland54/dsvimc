@@ -11,7 +11,7 @@
 #include  "vimc.h"
 extern lcm::LCM myLcm;
 
-
+extern bool useConstancy;
 stereo_event_t theStereoEvent;
 
 class State
@@ -25,6 +25,18 @@ void parameterCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channe
 {
    double value = std::stod(image->value);
    //printf(" got a parameter callback! value = %.2f\n",value);
+   if("CONSTANCY"== image->key)
+      {
+         if(value > 0.1)
+            {
+               useConstancy = true;
+            }
+         else
+            {
+               useConstancy = 0;
+            }
+      }
+
    if("GAIN" == image->key)
       {
          printf(" the new gain is %0.1f\n",value);

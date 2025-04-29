@@ -44,6 +44,8 @@
 #include "msNetThread.h"
 #include "simulationThread.h"
 //#include "spartanThread.h"
+#include "constancyThread.h"
+#include "jpegThread.h"
 
 #include "lcmHandleThread.h"
 
@@ -66,8 +68,11 @@ VimbaSystem          *vSystem;
 
 int   nOfAvtCameras;
 bool    thisIsASimulation;
+char *metadataSuffix;
 
+bool useConstancy;
 
+extern long int leftCount, rightCount;;
 lcm::LCM myLcm("udpm://239.255.76.67:7667?ttl=0");
 
 
@@ -107,6 +112,8 @@ main (int argc, char *argv[])
     nOfAvtCameras = 0;
     thisIsASimulation = false;
     bool useSparton = false;
+    leftCount = 0;
+    rightCount = 0;
 
     fprintf (stderr, "File %s compiled on %s at %s by Jonathan C. Howland\n", __FILE__, __DATE__, __TIME__);
 
@@ -156,6 +163,7 @@ main (int argc, char *argv[])
     if(GOOD_INI_FILE_READ == okINI)
         {
             int simulating = iniFile->readInt("GENERAL", "SIMULATION", 0);
+            useConstancy = (bool)iniFile->readInt("GENERAL", "USE_CONSTANCY", 1);
             if(simulating)
                 {
                     fprintf (stderr, "SIMULATING!!!!\n");
@@ -176,15 +184,15 @@ main (int argc, char *argv[])
                             char *scratchPrefix = iniFile->readString(cameraLabel,"FILENAME_PREFIX",cameraLabel);
                             avtCameras[nOfAvtCameras].filenamePrefix = strdup(scratchPrefix);
                             free( scratchPrefix);
-                            avtCameras[nOfAvtCameras].saveImages = (bool)iniFile->readInt(cameraLabel,"SAVE_IMAGES",true);
+                            avtCameras[nOfAvtCameras].saveImages = (bool)iniFile->readInt(cameraLabel,"SAVE_IMAGES",0);
                             scratchPrefix = iniFile->readString(cameraLabel,"SAVE_DIRECTORY_ROOT","./");
                             avtCameras[nOfAvtCameras].saveDirectoryRoot = strdup(scratchPrefix);
                             free(scratchPrefix);
-                            avtCameras[nOfAvtCameras].subscriptionName = iniFile->readString(cameraLabel,"SUBSCRIPTION_NAME","DEFAULT_SUBSCRIPTION");
+                            //avtCameras[nOfAvtCameras].subscriptionName = iniFile->readString(cameraLabel,"SUBSCRIPTION_NAME","DEFAULT_SUBSCRIPTION");
 
                             bool autoGain = (bool)iniFile->readInt(cameraLabel,"AUTO_GAIN",DEFAULT_AUTO_GAIN);
                             avtCameras[nOfAvtCameras].desiredSettings.autoGain = autoGain;
-                            double theGain = iniFile->readInt(cameraLabel,"GAIN",DEFAULT_GAIN);
+                            double theGain = iniFile->readDouble(cameraLabel,"GAIN",DEFAULT_GAIN);
                             avtCameras[nOfAvtCameras].desiredSettings.theGain = theGain;
 
                             bool autoExposure = (bool)iniFile->readInt(cameraLabel,"AUTO_EXPOSURE",DEFAULT_AUTO_EXPOSURE);
@@ -219,6 +227,7 @@ main (int argc, char *argv[])
                         }
                 }
 
+            metadataSuffix = iniFile->readString("GENERAL","METADATA_FILE_SUFFIX", "MET");
             stereoLogging = (bool)iniFile->readInt("GENERAL","LOG_STEREO",true);
             useSparton = (bool)iniFile->readInt("GENERAL","USE_SPARTON",0);
             iniFile->closeIni();
@@ -248,6 +257,8 @@ main (int argc, char *argv[])
     make_thread_table_entry (LCM_RECEIVE_THREAD, "LCM_RECEIVE_THREAD", lcmHandleThread, (void *)NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
     make_thread_table_entry (LOGGING_THREAD, "LOGGING_THREAD", loggingThread, (void *)NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
     make_thread_table_entry (SENSOR_THREAD, "SENSOR_THREAD", sensorThread, (void *)NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
+    make_thread_table_entry (CONSTANCY_THREAD, "CONSTANCY_THREAD", constancyThread, (void *)NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
+    make_thread_table_entry (JPEG_THREAD, "JPEG_THREAD", jpegThread, (void *)NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
     make_thread_table_entry (CTD_THREAD, "CTD_THREAD", nio_thread, (void *)CTD_THREAD, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
     make_thread_table_entry (FATHOMETER_THREAD, "FATHOMETER_THREAD", nio_thread, (void *)FATHOMETER_THREAD, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
     make_thread_table_entry (GPS_THREAD, "GPS_THREAD", nio_thread, (void *)GPS_THREAD, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE, NULL_EXTRA_ARG_VALUE);
@@ -321,7 +332,7 @@ main (int argc, char *argv[])
                 {
                     // set priority higher than default
                     status = nice (-10);
-                    fprintf (stderr, "Setting priority to -10, status = %d (%s) \n", status, (status == 0) ? "SUCCESS" : "FAILED");
+                    //fprintf (stderr, "Setting priority to -10, status = %d (%s) \n", status, (status == 0) ? "SUCCESS" : "FAILED");
                 }
         } while (c != 'q');
 

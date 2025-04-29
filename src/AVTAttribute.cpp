@@ -22,7 +22,6 @@ VmbErrorType  AVTAttribute::setAttribute(const AVT::VmbAPI::CameraPtr &camera,st
       {
          switch( featureType )
             {
-            bool ok;
             case VmbFeatureDataBool:
                {
                   int theValue;

@@ -57,10 +57,10 @@ void DeleteArray(T *pArray)
 }
 int makeFileName(char *filename, struct timeval tv,char *prefix)
 {
-    struct tm *gmtTime = gmtime(&tv.tv_sec);
-    int milliseconds = (float)tv.tv_usec/1000.0;
-    return sprintf(filename,"%s.%04d%02d%02d.%02d%02d%03d.%03d.tif",prefix,gmtTime->tm_year+1900, gmtTime->tm_mon+1,gmtTime->tm_mday,
-                    gmtTime->tm_hour, gmtTime->tm_min, gmtTime->tm_sec, milliseconds);
+   struct tm *gmtTime = gmtime(&tv.tv_sec);
+   int milliseconds = (float)tv.tv_usec/1000.0;
+   return sprintf(filename,"%s.%04d%02d%02d.%02d%02d%03d.%03d.tif",prefix,gmtTime->tm_year+1900, gmtTime->tm_mon+1,gmtTime->tm_mday,
+                  gmtTime->tm_hour, gmtTime->tm_min, gmtTime->tm_sec, milliseconds);
 }
 
 
@@ -153,7 +153,7 @@ void FrameObserver::FrameReceived( const AVT::VmbAPI::FramePtr pFrame )
 
                if(!anyError)
                   {
-                       /* VmbUint16_t *place;
+                     /* VmbUint16_t *place;
                         VmbUint16_t value;
                         place = (VmbUint16_t *)pBuffer;
                         int pixelShift = 0;
@@ -166,25 +166,10 @@ void FrameObserver::FrameReceived( const AVT::VmbAPI::FramePtr pFrame )
                             }
 */
 
-                       cv::Mat cvMat = cv::Mat(imageToPublish.height, imageToPublish.width, CV_8UC1, pBuffer ); // below line added 5 May 2023 jch
-                       // actually, on 26 Jas 2024 chnged back to 8 bit publishing, since the cameras will now acquire at 8 bits
-                       //cv::Mat cvMat = cv::Mat(imageToPublish.height, imageToPublish.width, CV_16UC1, pBuffer);
-                       imageCopy = cvMat.clone();
-                       double minVal;
-                                                       /*double maxVal;
-                                                       cv::Point minLoc;
-                                                       cv::Point maxLoc;
-
-                                                       cv::minMaxLoc( imageCopy, &minVal, &maxVal, &minLoc, &maxLoc );
-
-                                                       std::cout << "min val: " << minVal << std::endl;
-                                                       std::cout << "max val: " << maxVal << std::endl;*/
-
-                       /*cv::namedWindow("left single");
-                    cv::imshow("left single",imageCopy);
-                    cv::waitKey(0); // Wait for any keystroke in the window
-
-                    cv::destroyWindow("left single");*/
+                     cv::Mat cvMat = cv::Mat(imageToPublish.height, imageToPublish.width, CV_8UC1, pBuffer ); // below line added 5 May 2023 jch
+                     // actually, on 26 Jas 2024 chnged back to 8 bit publishing, since the cameras will now acquire at 8 bits
+                     //cv::Mat cvMat = cv::Mat(imageToPublish.height, imageToPublish.width, CV_16UC1, pBuffer);
+                     imageCopy = cvMat.clone();
 
                      if(cvMat.empty())
                         {
@@ -253,7 +238,7 @@ void FrameObserver::FrameReceived( const AVT::VmbAPI::FramePtr pFrame )
                      char topicName[32];
                      snprintf(topicName,32,"Vim%0d",cameraNumber);
                      std::string theTopic(topicName);
-                    // printf(" the size:  %d\n",sizeof(imageToPublish));
+                     // printf(" the size:  %d\n",sizeof(imageToPublish));
                      //avtCameras[cameraNumber].lcmChannelName
                      int success = myLcm.publish(avtCameras[cameraNumber].lcmChannelName,&imageToPublish);
                      //printf(" camera topic %s success = %d\n",topicName,success);
@@ -267,7 +252,7 @@ void FrameObserver::FrameReceived( const AVT::VmbAPI::FramePtr pFrame )
       }
    else
       {
-           printf("could not get recieve status from incoming frame!\n");
+         printf("could not get recieve status from incoming frame!\n");
       }
 }
 

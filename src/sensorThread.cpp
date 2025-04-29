@@ -172,7 +172,7 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
                                     sensor->ctd.depth = p*PRESSURE_TO_DEPTH;
                                     sensor->ctd.salinity = s;
                                     sensor->ctd.sound_velocity = UNKNOWN_SOUND_SPEED;
-                                    logLen = snprintf(loggingRecord,2047,"CTD %s HABCAM %0.5f %0.3f %0.2f %0.2f %0.3f %0.5f", dateString,c,t,sensor->ctd.depth,p,s);
+                                    logLen = snprintf(loggingRecord,2047,"CTD %s HABCAM %0.5f %0.3f %0.2f %0.2f %0.3f", dateString,c,t,sensor->ctd.depth,p,s);
                                 }
                             else if(3 == items)
                                 { // this is a seabird CTD
@@ -182,7 +182,7 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
                                     sensor->ctd.depth = p*PRESSURE_TO_DEPTH;
                                     sensor->ctd.sound_velocity = UNKNOWN_SOUND_SPEED;
                                     sensor->ctd.salinity = UNKNOWN_SALINITY;
-                                    logLen = snprintf(loggingRecord,2047,"CTD %s HABCAM %0.5f %0.3f %0.2f %0.2f %0.3f", dateString,c,t,sensor->ctd.depth,p,s,ss);
+                                    logLen = snprintf(loggingRecord,2047,"CTD %s HABCAM %0.5f %0.3f %0.2f %0.2f %0.3f %0.5f", dateString,c,t,sensor->ctd.depth,p,s,ss);
                                 }
                             else
                                 {

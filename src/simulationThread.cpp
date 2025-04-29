@@ -98,7 +98,6 @@ void *simulationThread (void *)
 
     IniFile  *iniFile = new IniFile();
     int okINI = iniFile->openIni(flyIniFile);
-    bool stereoLogging;
     if(GOOD_INI_FILE_READ == okINI)
         {
             char *scratchString = iniFile->readString("SIMULATION", "IMAGE_FILE", "NOFILE");
@@ -265,7 +264,6 @@ void *simulationThread (void *)
                                 double depthBias = (((double)rand() / RAND_MAX) - 0.5) * depthNoise;
                                 double tBias = (((double)rand() / RAND_MAX) - 0.5) * tNoise;
                                 double conductivityBias = (((double)rand() / RAND_MAX) - 0.5) * conductivityNoise;
-                                rov_time_t ctdTime = rov_get_time();
                                 marine_sensor::MarineSensorCtd_t myCtd;
                                 myCtd.depth = simDepth + depthBias;
                                 myCtd.sea_water_electrical_conductivity = defaultConductivity + conductivityBias;
@@ -279,7 +277,6 @@ void *simulationThread (void *)
                         case SIMULATION_TICK3:
                             {
                                 double altBias = (((double)rand() / RAND_MAX) - 0.5) * altNoise;
-                                rov_time_t altimeterTime = rov_get_time();
                                 marine_sensor::marineSensorAltimeter_t myAltimeter;
                                 myAltimeter.altitude = simAlt + altBias;
                                 int success = myLcm.publish(altimeterChannelName,&myAltimeter);
@@ -289,7 +286,6 @@ void *simulationThread (void *)
                         case SIMULATION_TICK4:
                             {
                                 double attitudeBias = (((double)rand() / RAND_MAX) - 0.5) * attitudeNoise;
-                                rov_time_t attitudeTime = rov_get_time();
                                 marine_sensor::MarineSensorAttitudeSensor_t myAttitude;
                                 myAttitude.heading = simHead + attitudeBias;  // check units
                                 myAttitude.pitch = simPitch + attitudeBias;
@@ -305,14 +301,12 @@ void *simulationThread (void *)
                                 marine_sensor::MarineSensorGPS_t myGPS;
                                 myGPS.latitude = simLatitude + latitudeBias;
                                 myGPS.longitude = simLon + longitudeBias;
-                                rov_time_t gpsTime = rov_get_time();
                                 int success = myLcm.publish(gpsChannelName,&myGPS);
                                 break;
                             }
                         case SIMULATION_TICK6:
                             {
                                 double fathometerBias = (((double)rand() / RAND_MAX) - 0.5) * fathometerNoise;
-                                rov_time_t fathometerTime = rov_get_time();
                                 marine_sensor::MarineSensorFathometer_t myFathometer;
                                 myFathometer.depth = simFathometer + fathometerBias;
                                 int success = myLcm.publish(fathometerChannelName,&myFathometer);

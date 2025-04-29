@@ -101,8 +101,6 @@ void *busThread (void *)
    msg_hdr_t hdr = { 0 };
    unsigned char data[MSG_DATA_LEN_MAX] = { 0 };
 
-   unsigned int xbs_count = 0;
-
    // wakeup message
    printf ("BUS_THREAD (thread %d) initialized \n", BUS_THREAD);
    printf ("BUS_THREAD File %s compiled at %s on %s\n", __FILE__, __TIME__, __DATE__);
