@@ -61,10 +61,12 @@ void process(Mat src1,int p,float *ml,float *ma,float *mb);
 *   the outputs are the factor ml,ma,mb for each of the color channel */
 void process(Mat src1,float *ml,float *ma,float *mb,int p,int m);
 
+
 void preprocess(Mat src,int p,int m,float *outml, float *outma, float *outmb);
  /** this is a main function to call to perform color correction in RGB color space **/
 Mat  run2(Mat,int p,int m);
 Mat  run3(Mat,int p,float inml, float inma, float mb);
+
 
 
 /** This is the main method which to call for color correction in Lab Color space.This performs basic pre-processing and calls the gray world function **/

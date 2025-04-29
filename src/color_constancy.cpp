@@ -330,6 +330,7 @@ void color_correction::contrast_stretching::cstretch(Mat src,Mat dst,int min,int
     {
                norm[i] = ((i - min) * 255/((max - min) +0.5));
                cerr << i << ":" << norm[i] << endl;
+
     }
 
     for (i = max; i < 255 + 1; i++)
@@ -344,7 +345,9 @@ void color_correction::contrast_stretching::cstretch(Mat src,Mat dst,int min,int
 
         cv::Vec3b color=*it;
         cv::Vec3b color1=*itout;
+
         cerr << (int)color[2] <<"," <<norm[color[2]] << ":";
+
         color1[index]=norm[color[index]];
         *itout=color1;
 
@@ -460,6 +463,7 @@ void color_correction::gray_world::process(Mat src1,float *ml,float *ma,float *m
            //cerr <<  *ma << endl;
            //cerr <<  *mb << endl;
 
+
            r=max(*ma,*mb);
            r=max(r,*ml);
 
@@ -557,6 +561,7 @@ Mat  color_correction::gray_world::run2(Mat src,int p,int m)
      return dst;
  }
 
+
 Mat  color_correction::gray_world::run3(Mat src,int m,float inml, float inma, float inmb)
  {
 
@@ -630,6 +635,7 @@ Mat  color_correction::gray_world::run3(Mat src,int m,float inml, float inma, fl
     // printf("image computation elapsed time:  %ld\n", (finish.tv_sec* 1000000000 + finish.tv_nsec) - (start.tv_sec*1000000000 + start.tv_nsec));
      return dst;
  }
+
 
 
 Mat  color_correction::gray_world::run1(Mat src,int p)
@@ -809,7 +815,9 @@ void  color_correction::gray_edge::process(Mat src1,float *ml,float *ma,float *m
               *ma=*ma+ac;
               *mb=*mb+bc;
               *ml=*ml+lc;
+
               cerr << lc << ":" ;
+
 //              *ml=max((double)*ml,(double)lc);
 //              *ma=max((double)*ma,(double)ac);
 //              *mb=max((double)*mb,(double)bc);
@@ -1240,7 +1248,9 @@ void  color_correction::max_edge::process(Mat src1,float *ml,float *ma,float *mb
 //              *ma=*ma+ac;
 //              *mb=*mb+bc;
 //              *ml=*ml+lc;
+
               cerr << lc << ":" ;
+
               *ml=max((double)*ml,(double)lc);
               *ma=max((double)*ma,(double)ac);
               *mb=max((double)*mb,(double)bc);

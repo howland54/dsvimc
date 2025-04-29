@@ -36,6 +36,7 @@
 #include "stereoLoggingThread.h"
 #include "color_constancy.hpp"
 #include "jpegThread.h"
+
 /* posix header files */
 #define  POSIX_SOURCE 1
 
@@ -196,6 +197,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
           sendToConstancyThread = true;
        }
 
+
     if(channel == avtCameras[leftCameraID].lcmChannelName)
         {
             whichCamera = 0;
@@ -241,7 +243,6 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             //cv::imwrite("foo.tif",leftColorImage);
             //leftColorImage.convertTo(dst,CV_8UC3,0.003891051); // 1/257 to get the full range
             //leftColorImage.convertTo(leftJpegImage,CV_8UC3,0.0625); // 1/16 to get the full range
-
             //struct timespec start,finish;
             //clock_gettime(CLOCK_REALTIME,&start);
              if(useConstancy && newVector.validData)
@@ -255,6 +256,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             //leftJpegImage = leftColorImage;
             //clock_gettime(CLOCK_REALTIME,&finish);
             //printf("elapsed time:  %ld\n", (finish.tv_sec* 1000000000 + finish.tv_nsec) - (start.tv_sec*1000000000 + start.tv_nsec));
+
 
 
             leftImageToPublish.width = image->width;
@@ -326,6 +328,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                  rightJpegImage = rightColorImage;
                }
             //rightJpegImage = rightColorImage;
+
 
             //cv::cvtColor(rightImage,rightColorImage,cv::COLOR_BayerBG2BGR,0);
             //vector<cv::Mat> channels;
