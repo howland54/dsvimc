@@ -37,6 +37,7 @@ typedef struct {
 	
 extern unsigned short compute_nmea_checksum(char *input_string);
 
+extern gpgga_t	parse_gngns(char *input_string, bool ignoreCheck);
 extern gpgga_t	parse_gpgga(char *input_string, bool ignoreCheck);
 extern gpgga_t	parse_lcgga(char *input_string);
 

@@ -215,7 +215,26 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
                                     break;
                                 }
                             rov_sprintf_dsl_time_string(dateString);
-                            if(!strncmp(command, "$GPGGA",6))
+                            if((!strncmp(command, "$GNGNS",6))) // add inthis parse so that we can work on single serial stream from Princes Scarlett, 24 July 2025
+                                {
+                                    int ignoreGPSChecksum = FALSE;
+                                    gpgga_t  gpg = parse_gngns(command,ignoreGPSChecksum);
+                                    if(gpg.valid)
+                                        {
+                                            sensor->vesselPosition.latitude = RAD_TO_DEGREES(gpg.latitude);
+                                            sensor->vesselPosition.longitude = RAD_TO_DEGREES(gpg.longitude);
+
+                                            marine_sensor::MarineSensorGPS_t myGPS;
+                                            myGPS.latitude = sensor->vesselPosition.latitude;
+                                            myGPS.longitude = sensor->vesselPosition.longitude;
+                                            myGPS.utime =(long int)( 1000.0 * sensorTime);
+                                            logLen = snprintf(loggingRecord,2047,"GPS %s HABCAM %0.6f %0.6f", dateString,sensor->vesselPosition.latitude,sensor->vesselPosition.longitude);
+                                            int success = myLcm.publish(gpsChannelName,&myGPS);
+                                        }
+
+                                }
+
+                            else if((!strncmp(command, "$GPGGA",6)) || (!strncmp(command, "$GNGNS",6)))
                                 {
                                     int ignoreGPSChecksum = FALSE;
                                     gpgga_t  gpg = parse_gpgga(command,ignoreGPSChecksum);

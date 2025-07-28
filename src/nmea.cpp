@@ -172,13 +172,15 @@ gpgga_t	parse_gpgga(char *input_string, bool ignoreTheChecksum)
                      double	utc_secs,latmin,lonmin,hdop,alt;
                      char		le_or_w,ln_or_s,altunits;
                      int      n_or_s,e_or_w;
-                     items = sscanf(input_string,"$GPGGA,%2d%2d%lf,%2d%lf,%c,%3d%lf,%c,%d,%lf,%lf,%c,",
+                     char msgType[128];
+                     items = sscanf(input_string,"%6s,%2d%2d%lf,%2d%lf,%c,%3d%lf,%c,%d,%lf,%lf,%c,",msgType,
                                     &utc_hrs,&utc_mins,&utc_secs,&latd,&latmin,&ln_or_s,&lond,&lonmin,&le_or_w,
                                     &nsat,&hdop,&alt,&altunits);
 
                      if(items != 13)
                         {
-                           return return_gpgga;
+
+                             return return_gpgga;
                         }
                      if(ln_or_s == 'S')
                         {
@@ -215,6 +217,91 @@ gpgga_t	parse_gpgga(char *input_string, bool ignoreTheChecksum)
             }
       }
 	else{
+         return return_gpgga;
+      }
+
+
+}
+
+//add this capability for Princes Scarlett 24 July 2025
+gpgga_t	parse_gngns(char *input_string, bool ignoreTheChecksum)
+
+{
+	gpgga_t	return_gpgga;
+	return_gpgga.valid = 0;
+   char *checksum_place = input_string;
+   unsigned short	computed_checksum = 0;
+    // first, run through the data and check the checksum
+   if(!ignoreTheChecksum)
+      {
+         computed_checksum = compute_nmea_checksum(input_string);
+         checksum_place = strstr(input_string,"*");
+      }
+   if(checksum_place)
+      {
+         unsigned int read_checksum;
+         int items = 0;
+         if(!ignoreTheChecksum)
+            {
+               items  = sscanf(checksum_place+1,"%02x",&read_checksum);
+            }
+         else
+            {
+               items = 1;
+               read_checksum = computed_checksum;
+            }
+
+         if(items)
+            {
+
+               if(read_checksum != computed_checksum)
+                  {
+                     return return_gpgga;
+                  }
+               else
+                  {  // the checksum is valid
+
+                     // parse the gpgga
+                     int	utc_hrs,utc_mins,latd,lond,nsat;
+                     double	utc_secs,latmin,lonmin,hdop,alt;
+                     char		le_or_w,ln_or_s,altunits;
+                     int      n_or_s,e_or_w;
+                     char msgType[128];
+                     items = sscanf(input_string,"$GNGNS,%2d%2d%lf,%2d%lf,%c,%3d%lf,%c,%d,%lf,%lf,%c,",
+                                    &utc_hrs,&utc_mins,&utc_secs,&latd,&latmin,&ln_or_s,&lond,&lonmin,&le_or_w);
+
+                     if(items != 9)
+                        {
+
+                             return return_gpgga;
+                        }
+                     if(ln_or_s == 'S')
+                        {
+                           n_or_s = -1;
+                        }
+                     else{
+                           n_or_s = 1;
+                        }
+                     if(le_or_w == 'W')
+                        {
+                           e_or_w = -1;
+                        }
+                     else{
+                           e_or_w = 1;
+                        }
+                     return_gpgga.latitude = (latd + latmin/60.0)*n_or_s*DTOR;
+                     return_gpgga.longitude = (lond + lonmin/60.0)*e_or_w*DTOR;
+                     return_gpgga.valid = 1;
+                     return_gpgga.utc_time = utc_hrs*3600 + utc_mins*60.0 + utc_secs;
+
+                     return return_gpgga;
+                  }
+            }
+         else{
+               return return_gpgga;
+            }
+      }
+    else{
          return return_gpgga;
       }
 

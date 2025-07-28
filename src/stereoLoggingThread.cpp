@@ -580,7 +580,19 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                                       jpegToSave[cameraNumber].dayOfYear = dayOfYear;
                                       strncpy(jpegToSave[cameraNumber].imageDescription,description, 2047);
                                       jpegToSave[cameraNumber].cameraNumber = cameraNumber;
-                                      jpegToSave[cameraNumber].theImage = leftJpegImage;
+                                      // fix to save both left and rights.  previous to this, always sentt left
+
+                                      //jpegToSave[cameraNumber].theImage = leftJpegImage;
+                                      if(cameraNumber == leftCameraID)
+                                          {
+                                                jpegToSave[cameraNumber].theImage = leftJpegImage;
+                                          }
+                                      else
+                                          {
+                                              jpegToSave[cameraNumber].theImage = rightJpegImage;
+                                          }
+
+
                                       pthread_mutex_unlock(&(jpegMutex[cameraNumber]));
                                       msg_send(JPEG_THREAD, STEREO_LOGGING_THREAD, WJPG,sizeof(int),&cameraNumber);
  #if 0
